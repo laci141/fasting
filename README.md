@@ -2,7 +2,7 @@
 
 An interactive explainer of what happens in the human body during fasting — mechanism, not rules.
 
-**Live:** https://fasting.pages.dev
+**Live:** https://fastingmap.pages.dev
 
 ## What it does
 
