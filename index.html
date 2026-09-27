@@ -416,20 +416,20 @@ const CH={W:760,H:520,x0:180,x1:740,cy0:24,cy1:250,gy0:312,row:20};
 /* diagram geometry (viewBox 420×250); n=node, a=arrow, t=label key, raw=literal, circ, cell, bars */
 const DIAGRAMS={
   fed:[{n:"gut",x:16,y:24},{n:"pancreas",x:16,y:182},{n:"blood",x:162,y:103},{n:"liver",x:308,y:18},{n:"muscle",x:308,y:103},{n:"fat",x:308,y:188},
-    {a:[112,46,162,114],c:"glu",k:"glucose",b:-10},{a:[112,204,162,138],c:"ins",k:"insulinUp",b:10},
+    {a:[112,46,162,118],c:"glu",k:"glucose",b:-10},{a:[112,204,162,132],c:"ins",k:"insulinUp",b:10},
     {a:[258,112,308,42],c:"gly",k:"toGlycogen",b:-8},{a:[258,125,308,125],c:"gly"},
     {a:[258,138,308,208],c:"ffa",k:"toFat",b:8},{t:"lipoBlocked",x:356,y:246,c:"ins",s:10}],
   postabs:[{n:"pancreas",x:16,y:18},{t:"insulinDown",x:120,y:34,c:"ins",an:"start"},{t:"glucagonUp",x:120,y:54,c:"gcg",an:"start"},
     {n:"liver",x:16,y:182},{a:[64,62,64,182],c:"gcg"},{n:"blood",x:162,y:103},{n:"brain",x:308,y:18},{n:"muscle",x:308,y:188},
-    {a:[112,198,162,136],c:"glu",k:"glucose",b:10},{a:[258,112,308,42],c:"glu",k:"glucose",b:-8},
+    {a:[112,198,162,132],c:"glu",k:"glucose",b:10},{a:[258,112,308,42],c:"glu",k:"glucose",b:-8},
     {a:[258,138,308,206],c:"glu",b:8,d:1,w:1.4},{t:"ownGly",x:412,y:246,c:"gly",s:10,an:"end"}],
   switch:[{n:"fat",x:16,y:18},{n:"liver",x:16,y:182},{n:"blood",x:162,y:103},{n:"muscle",x:308,y:18},{n:"brain",x:308,y:188},
-    {a:[112,44,162,114],c:"ffa",k:"ffa",b:-10,w:3.4},{a:[258,112,308,44],c:"ffa",k:"ffa",b:-8,w:3.4},
-    {a:[112,202,162,136],c:"glu",b:10,d:1,w:1.4},{t:"glycogenLow",x:64,y:244,c:"gly",s:10},
+    {a:[112,44,162,118],c:"ffa",k:"ffa",b:-10,w:3.4},{a:[258,112,308,44],c:"ffa",k:"ffa",b:-8,w:3.4},
+    {a:[112,202,162,132],c:"glu",b:10,d:1,w:1.4},{t:"glycogenLow",x:64,y:244,c:"gly",s:10},
     {a:[258,138,308,206],c:"glu",k:"glucose",b:8}],
   gng:[{n:"fat",x:16,y:14},{n:"muscle",x:16,y:103},{n:"rbc",x:16,y:192,w:110},{n:"liver",x:176,y:103},{n:"brain",x:318,y:103},
-    {a:[112,38,176,112],c:"ffa",k:"glycerol",b:-10},{a:[112,125,176,125],c:"acc",k:"aa"},
-    {a:[126,212,176,138],c:"gly",k:"lactate",b:10},{a:[272,125,318,125],c:"glu",k:"glucose",w:3.4},
+    {a:[112,38,200,103],c:"ffa",k:"glycerol",b:-10,lx:148,ly:74,la:"end"},{a:[112,125,176,125],c:"acc",k:"aa"},
+    {a:[126,212,200,147],c:"gly",k:"lactate",b:10,lx:152,ly:166,la:"end"},{a:[272,125,318,125],c:"glu",k:"glucose",w:3.4},
     {t:"faNot",x:300,y:198,c:"mut",s:10}],
   keto:[{n:"fat",x:16,y:103},{n:"liver",x:164,y:80,w:124,h:90},{t:"bho",x:226,y:150,c:"ffa",s:9.5},{n:"blood",x:324,y:103,w:90},
     {a:[112,125,164,125],c:"ffa",k:"ffa",lx:160,ly:96,la:"end"},{a:[288,125,324,125],c:"ket",k:"ketones",w:3.4,lx:292,ly:96,la:"start"},
@@ -437,8 +437,8 @@ const DIAGRAMS={
   brain:[{n:"blood",x:16,y:26},{n:"brain",x:300,y:18,w:104,h:62},
     {a:[112,40,300,40],c:"glu",k:"glucose"},{a:[112,62,300,62],c:"ket",k:"ketones",lo:14},{bars:1}],
   protein:[{n:"muscle",x:16,y:18},{t:"spared",x:64,y:78,c:"acc",s:10},{n:"fat",x:16,y:188},{n:"liver",x:170,y:103},{n:"brain",x:318,y:103},
-    {a:[112,44,170,112],c:"acc",k:"lessAA",b:-10,d:1,w:1.3},{a:[112,206,170,138],c:"ffa",k:"ffa",b:10},
-    {a:[266,112,318,112],c:"ket",k:"ketones",w:3.6,b:-14},{a:[266,138,318,138],c:"glu",k:"lessGlu",w:1.3,b:14,lo:16}],
+    {a:[112,44,170,118],c:"acc",k:"lessAA",b:-10,d:1,w:1.3},{a:[112,206,170,132],c:"ffa",k:"ffa",b:10},
+    {a:[266,118,318,118],c:"ket",k:"ketones",w:3.6,b:-14},{a:[266,132,318,132],c:"glu",k:"lessGlu",w:1.3,b:14,lo:16}],
   autophagy:[{cell:[210,118,196,100]},{t:"cell",x:210,y:40,c:"ink",s:12},
     {raw:"AMPK ↑",x:92,y:104,c:"ket",s:13},{raw:"mTOR ↓",x:92,y:134,c:"ins",s:13},
     {a:[132,110,192,110],c:"ket"},{circ:[226,110,30],c:"acc",d:1},{circ:[218,102,6],c:"mut"},{circ:[234,118,5],c:"mut"},
@@ -446,13 +446,13 @@ const DIAGRAMS={
     {circ:[336,110,22],c:"gcg",f:1},{t:"lysosome",x:336,y:148,c:"gcg",s:10},
     {a:[336,176,170,192],c:"ffa",k:"blocks",b:-10,lo:14},{t:"uncertain",x:210,y:244,c:"gcg",s:10.5}],
   hormones:[{n:"pituitary",x:16,y:10,w:124,h:40},{n:"symp",x:16,y:66,w:124,h:40},{n:"fat",x:300,y:38},
-    {a:[140,30,300,54],c:"gcg",k:"gh",b:-6,lx:220,ly:18},{a:[140,86,300,70],c:"ins",k:"nora",b:6,lo:14},
+    {a:[140,30,300,54],c:"gcg",k:"gh",b:-6,lx:220,ly:18},{a:[140,86,300,66],c:"ins",k:"nora",b:6,lo:14},
     {t:"insLowNa",x:210,y:146,c:"ins",s:10},
     {n:"glyWaterNode",x:16,y:170,w:124,h:44},{n:"kidney",x:250,y:170,w:90},
     {a:[140,192,250,192],c:"ket",k:"water"},{a:[340,196,400,236],c:"ket",b:-6},
     {raw:"Na⁺ · K⁺ · H₂O",x:295,y:232,c:"ket",s:10},{t:"excreted",x:404,y:162,c:"ket",s:10,an:"end"}],
   refeed:[{n:"food",x:16,y:18},{n:"pancreas",x:16,y:188},{n:"blood",x:162,y:103},{n:"cells",x:308,y:92,w:96,h:66},
-    {a:[112,44,162,112],c:"glu",k:"glucose",b:-10},{a:[112,206,162,138],c:"ins",k:"insulinUp",b:10},
+    {a:[112,44,162,118],c:"glu",k:"glucose",b:-10},{a:[112,206,162,132],c:"ins",k:"insulinUp",b:10},
     {a:[258,125,308,125],c:"acc",k:"intoCells",w:3.6,lx:304,ly:96,la:"end"},
     {raw:"PO₄³⁻ · K⁺ · Mg²⁺",x:283,y:82,c:"acc",s:10},{t:"bloodDrop",x:210,y:172,c:"gcg",s:10.5}]
 };
@@ -1055,8 +1055,12 @@ function diagram(id){const D=DIAGRAMS[id],dl=X().dl,C=k=>`var(--${k})`;let sh=""
       tx+=`<text x="${it.x+w/2}" y="${it.y+(h>60?24:h/2+4.5)}" fill="var(--ink)" font-size="${fitSize(lab,w).toFixed(1)}" text-anchor="middle" class="dn">${esc(lab)}</text>`}
     else if(it.a){const[x1,y1,x2,y2]=it.a,b=it.b||0,dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len;
       const cx=(x1+x2)/2+nx*b,cy=(y1+y2)/2+ny*b,col=C(it.c),w=it.w||2.2;
-      sh+=`<path d="M${x1} ${y1} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x2} ${y2}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${it.d?' stroke-dasharray="5 5"':""}/>`;
       const tx_=x2-cx,ty_=y2-cy,tl=Math.hypot(tx_,ty_)||1,ux=tx_/tl,uy=ty_/tl,hs=6+w;
+      /* shaft = sub-curve [t0,t1]: the round cap starts exactly at the source edge and ends inside the arrowhead,
+         so only the arrowhead tip touches the target edge */
+      const t0=(w/2)/len,t1=1-(hs*.5)/len,B=(a,p,q,r)=>(1-a)*(1-a)*p+2*(1-a)*a*q+a*a*r,
+        K=(p,q,r)=>(1-t0)*(1-t1)*p+((1-t0)*t1+t0*(1-t1))*q+t0*t1*r,f=v=>v.toFixed(1);
+      sh+=`<path d="M${f(B(t0,x1,cx,x2))} ${f(B(t0,y1,cy,y2))} Q${f(K(x1,cx,x2))} ${f(K(y1,cy,y2))} ${f(B(t1,x1,cx,x2))} ${f(B(t1,y1,cy,y2))}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${it.d?' stroke-dasharray="5 5"':""}/>`;
       sh+=`<path d="M${x2} ${y2} L${(x2-ux*hs-uy*hs*.55).toFixed(1)} ${(y2-uy*hs+ux*hs*.55).toFixed(1)} L${(x2-ux*hs+uy*hs*.55).toFixed(1)} ${(y2-uy*hs-ux*hs*.55).toFixed(1)} Z" fill="${col}"/>`;
       if(it.k){const mx=.25*x1+.5*cx+.25*x2,my=.25*y1+.5*cy+.25*y2,lo=it.lo!=null?it.lo:-9,lab=dl[it.k];
         let lx=mx+nx*lo,ly=my+ny*lo,an="middle";if(Math.abs(nx)>.7){an=nx*lo>0?"start":"end"}
