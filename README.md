@@ -84,6 +84,7 @@ Deployed as a static site on Cloudflare Pages (project `fasting`). No build step
 
 ```
 index.html   everything inline: CSS, SVG, JS, all four language packs
+tests/check-data.mjs   data-integrity check: `node tests/check-data.mjs` (Node, no dependencies)
 README.md
 LICENSE
 ```
@@ -121,7 +122,9 @@ Every link was checked (HTTP 200). PubMed IDs were confirmed through NCBI E-util
 - StatPearls: Biochemistry, Gluconeogenesis — https://www.ncbi.nlm.nih.gov/books/NBK544346/
 - StatPearls: Biochemistry, Ketogenesis — https://www.ncbi.nlm.nih.gov/books/NBK493179/
 - StatPearls: Refeeding Syndrome — https://www.ncbi.nlm.nih.gov/books/NBK564513/
+- StatPearls: Hyperphosphatemia (normal adult plasma phosphate 2.5–4.5 mg/dL) — https://www.ncbi.nlm.nih.gov/books/NBK551586/
 - OpenStax, *Anatomy and Physiology 2e*, Chapter 24: Metabolism and Nutrition. https://openstax.org/books/anatomy-and-physiology-2e/pages/24-introduction
+- OpenStax, *Anatomy and Physiology 2e*, 26.3 Electrolyte Balance, Table 26.1 (plasma Na⁺ 136–146, K⁺ 3.5–5.0 mM). https://openstax.org/books/anatomy-and-physiology-2e/pages/26-3-electrolyte-balance
 - NICE CG32. Nutrition support for adults — Recommendations, box 1. https://www.nice.org.uk/guidance/cg32/chapter/Recommendations
 - Berg, Tymoczko, Gatto, Stryer. *Biochemistry.* W. H. Freeman. (no verified link)
 

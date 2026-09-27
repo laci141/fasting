@@ -29,7 +29,7 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
   font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
 /* mandatory colourful layer so the glass blur is visible */
@@ -129,6 +129,10 @@ main .hero{padding-top:0}
 .kicker{font:500 .8rem "IBM Plex Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--acc)}
 .hero-p{font-size:1.15rem;max-width:62ch}
 .note{color:var(--mut);font-size:.92rem;border-left:3px solid var(--acc);padding-left:.8rem;max-width:70ch;margin:0}
+.safety{padding-top:1rem;padding-bottom:0}
+.safety .glass{padding:.9rem 1.2rem;border-color:color-mix(in srgb,var(--gcg) 45%,transparent)}
+.safety p{margin:0;font-size:.9rem;color:var(--mut)}
+.safety strong{color:var(--gcg)}
 
 /* ---------- stations ---------- */
 .stations{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.7rem}
@@ -164,6 +168,10 @@ main .hero{padding-top:0}
 .figs div{display:grid;grid-template-columns:9.5rem 1fr;gap:.7rem;align-items:baseline;border-top:1px solid rgba(255,255,255,.09);padding-top:.45rem}
 .figs dt{color:var(--acc);font-weight:500}
 .figs dd{margin:0;font-size:.92rem;color:var(--mut)}
+.ev{display:inline-block;font:600 .64rem "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);border:1px solid color-mix(in srgb,var(--acc) 55%,transparent);
+  background:color-mix(in srgb,var(--acc) 14%,transparent);border-radius:999px;padding:.05rem .45rem;margin-right:.35rem;white-space:nowrap}
+.ctx{font:500 .75rem "IBM Plex Mono",monospace;color:var(--mut);white-space:nowrap}
+.rnote{margin:.2rem 0 1rem;padding:.7rem .9rem;border-radius:12px;font-size:.9rem;border:1px solid color-mix(in srgb,var(--gcg) 50%,transparent);background:color-mix(in srgb,var(--gcg) 10%,transparent)}
 @media (max-width:420px){.figs div{grid-template-columns:1fr;gap:.1rem}}
 .mean{margin-top:1.2rem;padding:1rem 1.2rem;border-radius:14px;background:color-mix(in srgb,var(--acc) 12%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent)}
 .mean h4{margin-top:0}
@@ -182,7 +190,13 @@ main .hero{padding-top:0}
 input[type=range]{width:100%;accent-color:var(--acc);height:36px;cursor:pointer}
 #chartSvg{display:block;width:100%;min-width:640px;height:auto}
 #chartSvg .cv{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s}
-#chartSvg .cv.off,#chartSvg .dot.off{opacity:0}
+#chartSvg .cv.off,#chartSvg .dot.off,#chartSvg .anc.off{opacity:0}
+.bar-legend{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;margin-top:.6rem;font-size:.82rem;color:var(--mut)}
+.bar-legend span{display:inline-flex;align-items:center;gap:.4rem}
+.bar-legend i{display:inline-block;width:26px;height:10px;border-radius:5px;background:var(--acc)}
+.bar-legend i.soft{opacity:.35}
+.bar-legend i.dash{background:none;border:1px dashed var(--acc)}
+.bar-legend i.anc{width:10px;height:10px;border-radius:50%;background:var(--bg);border:2px solid var(--ink)}
 #chartSvg .grid{stroke:rgba(255,255,255,.08)}
 #chartSvg text{fill:var(--mut);font:11px "IBM Plex Mono",monospace}
 #chartSvg .gl{font:12px system-ui,sans-serif;fill:var(--mut);cursor:pointer}
@@ -251,6 +265,12 @@ footer{padding:1.5rem 16px 2.5rem;text-align:center;color:var(--mut);font-size:.
     </div>
   </section>
 
+  <section class="wrap sec safety" id="safety" aria-labelledby="safetyH">
+    <div class="glass" role="note">
+      <p><strong id="safetyH" data-t="safety.h"></strong> <span data-t="safety.p"></span></p>
+    </div>
+  </section>
+
   <section class="wrap sec" id="map">
     <h2 data-t="map.h"></h2>
     <p data-t="map.p"></p>
@@ -268,6 +288,7 @@ footer{padding:1.5rem 16px 2.5rem;text-align:center;color:var(--mut);font-size:.
         <output id="hrOut" class="mono" for="hr"></output>
       </div>
       <div class="scrollx"><svg id="chartSvg" viewBox="0 0 760 520" role="img"></svg></div>
+      <div class="bar-legend" id="barLegend"></div>
       <div class="legend" id="legend"></div>
       <div class="focus-box" id="focusBox" aria-live="polite"></div>
     </div>
@@ -329,32 +350,56 @@ const VIDEOS=[
 const META={langs:["hu","ro","de","en"],def:"hu",pals:["ember","ketone","dawn"],tMax:72,
   brainKetShare:.6,levels:[.15,.35,.6,.8]};
 
-/* windows in hours. core = main window, soft = individual variation, focus = slider focus band, lab = label range.
-   figs: [label key, value, source id from SOURCES (optional)] */
+/* Station time windows, in hours since the last meal (all schematic):
+   representative = typical window: the strong chart bar AND the label text describe exactly this range.
+                    [start,null] = starts around `start` and continues past 72 h (bar runs to 72 h with a ▸ marker).
+   onset          = wider reported range incl. individual variation / earliest reported start: the faint chart bar.
+   focus          = slider band in which this station is "in focus"; always inside `representative`.
+   display        = how the label is written: "range" (≈ a–b), "from" (≈ a+), "uncertain", "atEnd".
+   figs: {id: label key in L.*.fig, value, source: id in SOURCES or null, evidence: one of EVIDENCE,
+          context: null or {n: sample size from the abstract (or null), s: setting key in L.*.ctx}} */
+const EVIDENCE=["HUMAN STUDY","SMALL HUMAN STUDY","ANIMAL","CELL","REVIEW","GUIDELINE","TEXTBOOK ESTIMATE","REFERENCE RANGE","SCHEMATIC"];
 const STATIONS=[
-  {id:"fed",core:[0,4],soft:[0,6],focus:[0,4],lab:[0,4],
-    figs:[["fastGlu","3.9–5.6 mmol/L · 70–100 mg/dL"],["liverGly","~100 g"],["muscleGly","~400 g"]]},
-  {id:"postabs",core:[4,12],soft:[3,16],focus:[4,12],lab:[4,12],
-    figs:[["gng14","~47%","landau"]]},
-  {id:"switch",core:[12,24],soft:[10,36],focus:[12,24],lab:[12,36],
-    figs:[["switchWin","12–36 {h}","anton"],["ffa5d","0.43 → 1.55 mmol/L","ho"]]},
-  {id:"gng",core:[12,72],soft:[4,72],focus:[24,36],lab:[4,null],plus:1,
-    figs:[["gng14","~47%","landau"],["gng22","~67%","landau"],["gng42","~93%","landau"],["glu5d","4.9 → 3.2 mmol/L","ho"]]},
-  {id:"keto",core:[18,72],soft:[12,72],focus:[36,48],lab:[12,null],plus:1,
-    figs:[["acac5d","~14×","ho"],["ffa5d","0.43 → 1.55 mmol/L","ho"]]},
-  {id:"brain",core:[48,72],soft:[24,72],focus:[48,60],lab:[48,null],plus:1,
-    figs:[["brainBhb","0.05 → ~1 mmol/L","pan"],["brainWeeks","5–6 {wk}","owen67"]]},
-  {id:"protein",core:[60,72],soft:[36,72],focus:[60,72],lab:[72,null],plus:1,
-    figs:[["aaEnergy","~7%","owen98"],["alanine","Ala ↓","felig"]]},
-  {id:"autophagy",core:null,soft:[12,72],focus:null,lab:null,plus:1,
-    figs:[["mouseAuto","↑↑","alir"],["humanAuto","—"]]},
-  {id:"hormones",core:[12,72],soft:[6,72],focus:null,lab:[12,null],plus:1,
-    figs:[["ghFold","~3×","ho"],["noraFold","~2×","zauner"],["reeUp","+14%","zauner"],["serumNa","135–145 mmol/L"],["serumK","3.5–5.0 mmol/L"]]},
-  {id:"refeed",core:null,soft:null,focus:null,lab:null,
-    figs:[["serumP","0.8–1.5 mmol/L"],["nice10","> 10 {d}","nice"],["nice5","> 5 {d}","nice"]]}
+  {id:"fed",representative:[0,4],onset:[0,6],focus:[0,4],display:"range",
+    figs:[{id:"fastGlu",value:"3.9–5.6 mmol/L · 70–100 mg/dL",source:null,evidence:"REFERENCE RANGE",context:null},
+      {id:"liverGly",value:"~100 g",source:null,evidence:"TEXTBOOK ESTIMATE",context:null},
+      {id:"muscleGly",value:"~400 g",source:null,evidence:"TEXTBOOK ESTIMATE",context:null}]},
+  {id:"postabs",representative:[4,12],onset:[3,16],focus:[4,12],display:"range",
+    figs:[{id:"gng14",value:"~47%",source:"landau",evidence:"HUMAN STUDY",context:{n:null,s:"f14h"}}]},
+  {id:"switch",representative:[12,36],onset:[10,40],focus:[12,24],display:"range",
+    figs:[{id:"switchWin",value:"12–36 {h}",source:"anton",evidence:"REVIEW",context:null},
+      {id:"ffa5d",value:"0.43 → 1.55 mmol/L",source:"ho",evidence:"SMALL HUMAN STUDY",context:{n:6,s:"f5d"}}]},
+  {id:"gng",representative:[12,null],onset:[4,72],focus:[24,36],display:"from",
+    figs:[{id:"gng14",value:"~47%",source:"landau",evidence:"HUMAN STUDY",context:{n:null,s:"f14h"}},
+      {id:"gng22",value:"~67%",source:"landau",evidence:"HUMAN STUDY",context:{n:null,s:"f22h"}},
+      {id:"gng42",value:"~93%",source:"landau",evidence:"HUMAN STUDY",context:{n:null,s:"f42h"}},
+      {id:"glu5d",value:"4.9 → 3.2 mmol/L",source:"ho",evidence:"SMALL HUMAN STUDY",context:{n:6,s:"f5d"}}]},
+  {id:"keto",representative:[18,null],onset:[12,72],focus:[36,48],display:"from",
+    figs:[{id:"acac5d",value:"~14×",source:"ho",evidence:"SMALL HUMAN STUDY",context:{n:6,s:"f5d"}},
+      {id:"ffa5d",value:"0.43 → 1.55 mmol/L",source:"ho",evidence:"SMALL HUMAN STUDY",context:{n:6,s:"f5d"}}]},
+  {id:"brain",representative:[48,null],onset:[24,72],focus:[48,60],display:"from",
+    figs:[{id:"brainBhb",value:"0.05 → ~1 mmol/L",source:"pan",evidence:"HUMAN STUDY",context:{n:null,s:"f23d"}},
+      {id:"brainWeeks",value:"5–6 {wk}",source:"owen67",evidence:"SMALL HUMAN STUDY",context:{n:3,s:"f56wk"}}]},
+  {id:"protein",representative:[60,null],onset:[36,72],focus:[60,72],display:"from",
+    figs:[{id:"aaEnergy",value:"~7%",source:"owen98",evidence:"SMALL HUMAN STUDY",context:{n:5,s:"f21d"}},
+      {id:"alanine",value:"Ala ↓",source:"felig",evidence:"HUMAN STUDY",context:{n:null,s:"f56wk"}}]},
+  {id:"autophagy",representative:null,onset:[12,72],focus:null,display:"uncertain",
+    figs:[{id:"mouseAuto",value:"↑↑",source:"alir",evidence:"ANIMAL",context:{n:null,s:"mice"}},
+      {id:"humanAuto",value:"—",source:null,evidence:"REVIEW",context:null}]},
+  {id:"hormones",representative:[12,null],onset:[6,72],focus:null,display:"from",
+    figs:[{id:"ghFold",value:"~3×",source:"ho",evidence:"SMALL HUMAN STUDY",context:{n:6,s:"f5d"}},
+      {id:"noraFold",value:"~2×",source:"zauner",evidence:"SMALL HUMAN STUDY",context:{n:11,s:"f84h"}},
+      {id:"reeUp",value:"+14%",source:"zauner",evidence:"SMALL HUMAN STUDY",context:{n:11,s:"f84h"}},
+      {id:"serumNa",value:"136–146 mmol/L",source:"os-elec",evidence:"REFERENCE RANGE",context:null},
+      {id:"serumK",value:"3.5–5.0 mmol/L",source:"os-elec",evidence:"REFERENCE RANGE",context:null}]},
+  {id:"refeed",representative:null,onset:null,focus:null,display:"atEnd",
+    figs:[{id:"serumP",value:"0.81–1.45 mmol/L · 2.5–4.5 mg/dL",source:"sp-hyperp",evidence:"REFERENCE RANGE",context:null},
+      {id:"nice10",value:"> 10 {d}",source:"nice",evidence:"GUIDELINE",context:null},
+      {id:"nice5",value:"> 5 {d}",source:"nice",evidence:"GUIDELINE",context:null}]}
 ];
 
-/* schematic, normalised 0–1 levels vs. hours since the last meal — illustrative, not measured */
+/* conceptual model: hand-chosen anchor points [hour, relative level 0–1], joined by a smooth monotone curve.
+   Illustrative only — not measured human data. The anchors are drawn as small open dots on the chart. */
 const CURVES={
   glu:[[0,.62],[1,.92],[2,.8],[4,.64],[12,.6],[24,.55],[48,.5],[72,.48]],
   ins:[[0,.45],[1,.95],[2,.75],[4,.4],[8,.28],[12,.22],[24,.16],[48,.12],[72,.1]],
@@ -377,7 +422,7 @@ const DIAGRAMS={
   postabs:[{n:"pancreas",x:16,y:18},{t:"insulinDown",x:120,y:34,c:"ins",an:"start"},{t:"glucagonUp",x:120,y:54,c:"gcg",an:"start"},
     {n:"liver",x:16,y:182},{a:[64,62,64,182],c:"gcg"},{n:"blood",x:162,y:103},{n:"brain",x:308,y:18},{n:"muscle",x:308,y:188},
     {a:[112,198,162,136],c:"glu",k:"glucose",b:10},{a:[258,112,308,42],c:"glu",k:"glucose",b:-8},
-    {a:[258,138,308,206],c:"glu",b:8,d:1,w:1.4},{t:"ownGly",x:356,y:246,c:"gly",s:10}],
+    {a:[258,138,308,206],c:"glu",b:8,d:1,w:1.4},{t:"ownGly",x:412,y:246,c:"gly",s:10,an:"end"}],
   switch:[{n:"fat",x:16,y:18},{n:"liver",x:16,y:182},{n:"blood",x:162,y:103},{n:"muscle",x:308,y:18},{n:"brain",x:308,y:188},
     {a:[112,44,162,114],c:"ffa",k:"ffa",b:-10,w:3.4},{a:[258,112,308,44],c:"ffa",k:"ffa",b:-8,w:3.4},
     {a:[112,202,162,136],c:"glu",b:10,d:1,w:1.4},{t:"glycogenLow",x:64,y:244,c:"gly",s:10},
@@ -387,7 +432,7 @@ const DIAGRAMS={
     {a:[126,212,176,138],c:"gly",k:"lactate",b:10},{a:[272,125,318,125],c:"glu",k:"glucose",w:3.4},
     {t:"faNot",x:300,y:198,c:"mut",s:10}],
   keto:[{n:"fat",x:16,y:103},{n:"liver",x:164,y:80,w:124,h:90},{t:"bho",x:226,y:150,c:"ffa",s:9.5},{n:"blood",x:324,y:103,w:90},
-    {a:[112,125,164,125],c:"ffa",k:"ffa"},{a:[288,125,324,125],c:"ket",k:"ketones",w:3.4},
+    {a:[112,125,164,125],c:"ffa",k:"ffa",lx:160,ly:96,la:"end"},{a:[288,125,324,125],c:"ket",k:"ketones",w:3.4,lx:292,ly:96,la:"start"},
     {raw:"BHB · AcAc",x:369,y:166,c:"ket",s:10},{t:"noUse",x:226,y:192,c:"mut",s:10},{t:"insBrake",x:226,y:62,c:"ins",s:10.5}],
   brain:[{n:"blood",x:16,y:26},{n:"brain",x:300,y:18,w:104,h:62},
     {a:[112,40,300,40],c:"glu",k:"glucose"},{a:[112,62,300,62],c:"ket",k:"ketones",lo:14},{bars:1}],
@@ -401,14 +446,14 @@ const DIAGRAMS={
     {circ:[336,110,22],c:"gcg",f:1},{t:"lysosome",x:336,y:148,c:"gcg",s:10},
     {a:[336,176,170,192],c:"ffa",k:"blocks",b:-10,lo:14},{t:"uncertain",x:210,y:244,c:"gcg",s:10.5}],
   hormones:[{n:"pituitary",x:16,y:10,w:124,h:40},{n:"symp",x:16,y:66,w:124,h:40},{n:"fat",x:300,y:38},
-    {a:[140,30,300,54],c:"gcg",k:"gh",b:-6},{a:[140,86,300,70],c:"ins",k:"nora",b:6,lo:14},
+    {a:[140,30,300,54],c:"gcg",k:"gh",b:-6,lx:220,ly:18},{a:[140,86,300,70],c:"ins",k:"nora",b:6,lo:14},
     {t:"insLowNa",x:210,y:146,c:"ins",s:10},
     {n:"glyWaterNode",x:16,y:170,w:124,h:44},{n:"kidney",x:250,y:170,w:90},
     {a:[140,192,250,192],c:"ket",k:"water"},{a:[340,196,400,236],c:"ket",b:-6},
-    {raw:"Na⁺ · K⁺ · H₂O",x:295,y:232,c:"ket",s:10},{t:"excreted",x:404,y:176,c:"ket",s:10,an:"end"}],
+    {raw:"Na⁺ · K⁺ · H₂O",x:295,y:232,c:"ket",s:10},{t:"excreted",x:404,y:162,c:"ket",s:10,an:"end"}],
   refeed:[{n:"food",x:16,y:18},{n:"pancreas",x:16,y:188},{n:"blood",x:162,y:103},{n:"cells",x:308,y:92,w:96,h:66},
     {a:[112,44,162,112],c:"glu",k:"glucose",b:-10},{a:[112,206,162,138],c:"ins",k:"insulinUp",b:10},
-    {a:[258,125,308,125],c:"acc",k:"intoCells",w:3.6,lo:16},
+    {a:[258,125,308,125],c:"acc",k:"intoCells",w:3.6,lx:304,ly:96,la:"end"},
     {raw:"PO₄³⁻ · K⁺ · Mg²⁺",x:283,y:82,c:"acc",s:10},{t:"bloodDrop",x:210,y:172,c:"gcg",s:10.5}]
 };
 
@@ -433,6 +478,8 @@ const SOURCES=[
   {id:"sp-gng",txt:"StatPearls (NCBI Bookshelf): Biochemistry, Gluconeogenesis.",url:"https://www.ncbi.nlm.nih.gov/books/NBK544346/"},
   {id:"sp-keto",txt:"StatPearls (NCBI Bookshelf): Biochemistry, Ketogenesis.",url:"https://www.ncbi.nlm.nih.gov/books/NBK493179/"},
   {id:"sp-refeed",txt:"StatPearls (NCBI Bookshelf): Refeeding Syndrome.",url:"https://www.ncbi.nlm.nih.gov/books/NBK564513/"},
+  {id:"sp-hyperp",txt:"StatPearls (NCBI Bookshelf): Hyperphosphatemia — normal adult plasma phosphate 2.5–4.5 mg/dL.",url:"https://www.ncbi.nlm.nih.gov/books/NBK551586/"},
+  {id:"os-elec",txt:"OpenStax. Anatomy and Physiology 2e, 26.3 Electrolyte Balance — Table 26.1, plasma reference values.",url:"https://openstax.org/books/anatomy-and-physiology-2e/pages/26-3-electrolyte-balance"},
   {id:"openstax",txt:"OpenStax. Anatomy and Physiology 2e, Chapter 24: Metabolism and Nutrition.",url:"https://openstax.org/books/anatomy-and-physiology-2e/pages/24-introduction"},
   {id:"nice",txt:"NICE CG32. Nutrition support for adults: oral nutrition support, enteral tube feeding and parenteral nutrition — Recommendations, box 1.",url:"https://www.nice.org.uk/guidance/cg32/chapter/Recommendations"},
   {id:"berg",txt:"Berg JM, Tymoczko JL, Gatto GJ, Stryer L. Biochemistry. W. H. Freeman — chapters on glycogen metabolism, gluconeogenesis and fatty acid metabolism.",url:""}
@@ -447,18 +494,23 @@ hu:{
   dec:",",
   u:{h:"óra",d:"nap",wk:"hét",day:"nap",uncertain:"időzítés bizonytalan",atEnd:"a böjt végén",varies:"Az időablak közelítő, és egyénenként eltér."},
   ui:{brand:"Böjt",skip:"Ugrás a tartalomhoz",navLabel:"Fő navigáció",langLabel:"Nyelv",close:"Bezárás",prev:"Előző",next:"Következő",
-    mech:"Mechanizmus",figs:"Kulcsszámok",mean:"Mit jelent ez?",diagCap:"Vázlatos, kézzel rajzolt stílusú ábra — nem méretarányos.",
+    mech:"Mechanizmus",figs:"Kulcsszámok",mean:"Mit jelent ez?",diagCap:"Vázlatos ábra — nem méretarányos.",evidence:"Bizonyítéki szint",
+    refeedNote:"Ez az állomás az élettant és a klinikai kockázatot magyarázza el. Nem útmutató hosszan tartó böjthöz, és nem arra való, hogy valaki maga kezelje az újratáplálást. Az alábbi NICE-kritériumok szakembereknek szóló klinikai kockázati kritériumok, nem önértékelő eszköz.",
     station:"Állomás",menuSub:"Mechanizmus, nem szabályok",menuOpen:"Menü megnyitása",collapse:"Menü összecsukása",expand:"Menü kinyitása",footer:"Oktatási célú magyarázó · MIT licenc · nincs követés, nincs süti"},
   nav:{map:"Idővonal",chart:"Üzemanyag-grafikon",videos:"Videók",sources:"Források"},
   pal:{label:"Színséma",ember:"Parázs",ketone:"Keton",dawn:"Hajnal"},
+  safety:{h:"Biztonsági megjegyzés:",p:"ez az oldal oktatási célú magyarázó, nem böjtprotokoll és nem orvosi tanács. A hosszan tartó böjt veszélyes lehet gyermekek és serdülők, cukorbetegek vagy rendszeresen gyógyszert szedők, várandósok és szoptatók, korábban evészavarral küzdők, valamint jelentős betegségben szenvedők számára."},
+  ev:{"HUMAN STUDY":"Humán vizsgálat","SMALL HUMAN STUDY":"Kis humán vizsgálat","ANIMAL":"Állatkísérlet","CELL":"Sejtkísérlet","REVIEW":"Összefoglaló","GUIDELINE":"Irányelv","TEXTBOOK ESTIMATE":"Tankönyvi becslés","REFERENCE RANGE":"Referenciatartomány","SCHEMATIC":"Vázlatos"},
+  ctx:{f14h:"14 órás böjt",f22h:"22 órás böjt",f42h:"42 órás böjt",f5d:"5 napos böjt",f23d:"2–3 napos böjt",f56wk:"5–6 hetes böjt",f21d:"21 napos böjt",f84h:"84 órás böjt",mice:"egerek · rövid böjt"},
   hero:{kicker:"A böjt élettana",h1:"Mit csinál a tested, amikor abbahagyod az evést",
     p:"Itt nincsenek szabályok. Nincsenek étellisták, nincs „böjtölj X napot, egyél Y‑t”. Csak a mechanizmus — olyan mélyen elmagyarázva, hogy a következtetések maguktól nyilvánvalóvá válnak. A test egy fizikai rendszer; ez az oldal megtanít olvasni benne.",
     note:"Minden időablak tartomány, és egyénenként eltér: függ az utolsó étkezéstől, a fizikai aktivitástól, a testösszetételtől, az életkortól és az egészségi állapottól."},
   map:{h:"Egy böjt útja",p:"Tíz állomás. Válassz egyet, és megnézheted a mechanizmust, a kulcsszámokat és azt, ami belőlük következik."},
-  chart:{h:"Üzemanyag-grafikon, 0–72 óra",badge:"közelítő, szemléltető",
+  chart:{h:"Üzemanyag-grafikon, 0–72 óra",badge:"Koncepcionális modell — nem mért emberi adat",
     p:"Húzd a csúszkát az első három napon át. A görbék közelítők és szemléltetők — az irányt és a sorrendet mutatják, nem mért értékeket.",
-    slider:"Az utolsó étkezés óta eltelt órák",yAxis:"relatív szint",xAxis:"az utolsó étkezés óta eltelt órák",wm:"közelítő, szemléltető",
-    gantt:"Az állomások időablakai (halvány sáv = egyéni eltérés)",focus:"Fókuszban:",also:"Közben zajlik:",none:"—",
+    slider:"Az utolsó étkezés óta eltelt órák",yAxis:"relatív koncepcionális szint",xAxis:"az utolsó étkezés óta eltelt órák",wm:"koncepcionális modell",
+    gantt:"Az állomások időablakai (jelmagyarázat a grafikon alatt)",
+    bars:{rep:"erős sáv = jellemző időablak (ezt mutatja a címke)",onset:"halvány sáv = tágabb közölt tartomány, egyéni eltérés",unc:"szaggatott keret = emberben bizonytalan időzítés",cont:"72 órán túl is tart",anc:"kör = kézzel választott pont a koncepcionális görbén"},focus:"Fókuszban:",also:"Közben zajlik:",none:"—",
     aria:"Szemléltető grafikon: vércukor, inzulin, glukagon, szabad zsírsavak, ketontestek és májglikogén 0 és 72 óra között."},
   cv:{glu:"Vércukor",ins:"Inzulin",gcg:"Glukagon",ffa:"Szabad zsírsavak",ket:"Ketontestek",gly:"Májglikogén"},
   lv:["nagyon alacsony","alacsony","közepes","magas","nagyon magas"],
@@ -469,32 +521,32 @@ hu:{
     fastGlu:"Az éhomi vércukor normáltartománya",
     liverGly:"Májglikogén felnőttben (durva tankönyvi becslés; nagyon változó)",
     muscleGly:"Izomglikogén az egész testben (durva tankönyvi becslés; az izomtömegtől és az edzettségtől függ)",
-    gng14:"A máj glükóztermelésének glukoneogenezisből származó része 14 óra böjt után (Landau 1996; kis vizsgálat)",
-    gng22:"Ugyanez az arány 22 óra után (ugyanaz a vizsgálat)",
-    gng42:"Ugyanez az arány 42 óra után — ekkorra szinte a teljes glükóztermelés (ugyanaz a vizsgálat)",
-    glu5d:"Vércukor a böjt 1. és 5. napján — alacsonyabb, de továbbra is szabályozott (Ho 1988; 6 férfi)",
-    switchWin:"Az anyagcsere-váltás jellemző időablaka; függ a kiinduló májglikogéntől és a fizikai aktivitástól (Anton 2018)",
-    ffa5d:"Plazma szabadzsírsav-szint a böjt 1. és 5. napján (Ho 1988)",
-    acac5d:"Az acetoacetát (ketontest) vérszintjének emelkedése az 1. és az 5. böjtnap között (Ho 1988)",
-    brainBhb:"Béta-hidroxibutirát az agyban, MR-spektroszkópiával mérve: táplált állapotban és 3 nap böjt után (Pan 2000; kis vizsgálat)",
-    brainWeeks:"Ennyi böjt után váltották fel a ketontestek a glükózt az agy fő üzemanyagaként (Owen 1967; 3 beteg)",
-    aaEnergy:"Az energia aminosav-oxidációból származó része egy 21 napos böjt végén (Owen 1998; 5 résztvevő)",
-    alanine:"A plazma alaninszintje — a fő glükózképző aminosavé — csökken, így a máj kevesebbet vesz fel belőle, és a fehérjebontás mérséklődik (Felig 1969)",
-    mouseAuto:"Rövid böjt után egerek idegsejtjeiben jelentősen megnőtt az autofagoszómák száma — emberre közvetlenül nem vihető át (Alirezaei 2010)",
+    gng14:"A máj glükóztermelésének glukoneogenezisből származó része 14 óra böjt után",
+    gng22:"Ugyanez az arány 22 óra után",
+    gng42:"Ugyanez az arány 42 óra után — ekkorra szinte a teljes glükóztermelés",
+    glu5d:"Vércukor a böjt 1. és 5. napján — alacsonyabb, de továbbra is szabályozott",
+    switchWin:"Az anyagcsere-váltás jellemző időablaka; függ a kiinduló májglikogéntől és a fizikai aktivitástól",
+    ffa5d:"Plazma szabadzsírsav-szint a böjt 1. és 5. napján",
+    acac5d:"Az acetoacetát (ketontest) vérszintjének emelkedése az 1. és az 5. böjtnap között",
+    brainBhb:"Béta-hidroxibutirát az agyban, MR-spektroszkópiával mérve: táplált állapotban és 3 nap böjt után",
+    brainWeeks:"Ennyi böjt után váltották fel a ketontestek a glükózt az agy fő üzemanyagaként",
+    aaEnergy:"Az energia aminosav-oxidációból származó része egy 21 napos böjt végén",
+    alanine:"A plazma alaninszintje — a fő glükózképző aminosavé — csökken, így a máj kevesebbet vesz fel belőle, és a fehérjebontás mérséklődik",
+    mouseAuto:"Rövid böjt után egerek idegsejtjeiben jelentősen megnőtt az autofagoszómák száma — emberre közvetlenül nem vihető át",
     humanAuto:"Validált, az egész testre vonatkozó mérési módszer élő emberben",
-    ghFold:"A 24 órás növekedésihormon-szint az 5. böjtnapon a táplált naphoz képest (Ho 1988)",
-    noraFold:"A szérum-noradrenalin változása az 1. és a 4. böjtnap között (Zauner 2000; 11 résztvevő)",
-    reeUp:"A nyugalmi energiafelhasználás változása az 1. és a 3. böjtnap között (Zauner 2000)",
+    ghFold:"A 24 órás növekedésihormon-szint az 5. böjtnapon a táplált naphoz képest",
+    noraFold:"A szérum-noradrenalin változása az 1. és a 4. böjtnap között",
+    reeUp:"A nyugalmi energiafelhasználás változása az 1. és a 3. böjtnap között",
     serumNa:"A szérumnátrium normáltartománya",
     serumK:"A szérumkálium normáltartománya",
     serumP:"A szérumfoszfát normáltartománya (felnőtt; laboronként eltér)",
-    nice10:"Az ennél hosszabb ideig tartó csekély vagy nulla táplálékbevitel önmagában magas újratáplálási kockázatot jelent (NICE CG32)",
-    nice5:"Az ennél hosszabb ideig tartó csekély vagy nulla bevitel akkor jelent magas kockázatot, ha egy másik kockázati tényező is fennáll (NICE CG32)"},
+    nice10:"Klinikai kockázati kritérium (nem önértékelő eszköz): az ennél hosszabb ideig tartó csekély vagy nulla táplálékbevitel önmagában magas újratáplálási kockázatot jelent",
+    nice5:"Klinikai kockázati kritérium (nem önértékelő eszköz): az ennél hosszabb ideig tartó csekély vagy nulla bevitel akkor jelent magas kockázatot, ha egy másik kockázati tényező is fennáll"},
   dl:{gut:"Bél",blood:"Vér",liver:"Máj",muscle:"Izom",fat:"Zsírszövet",pancreas:"Hasnyálmirigy",brain:"Agy",rbc:"Vörösvérsejtek",kidney:"Vese",
     cells:"Sejtek",food:"Táplálék",pituitary:"Agyalapi mirigy",symp:"Szimpatikus idegrendszer",glyWaterNode:"Glikogén + víz",
     glucose:"glükóz",insulinUp:"inzulin ↑",insulinDown:"inzulin ↓",glucagonUp:"glukagon ↑",toGlycogen:"→ glikogén",toFat:"→ zsír",
     lipoBlocked:"lipolízis gátolva",ownGly:"saját glikogénjét használja",ffa:"zsírsavak",glycogenLow:"fogyó glikogén",glycerol:"glicerin",
-    lactate:"laktát (Cori)",aa:"aminosavak",faNot:"zsírsav → glükóz: nem lehetséges",ketones:"ketonok",bho:"β-oxidáció → acetil-KoA",
+    lactate:"laktát (Cori)",aa:"aminosavak",faNot:"zsírsav → glükóz: nettó átalakítás nincs",ketones:"ketonok",bho:"β-oxidáció → acetil-KoA",
     noUse:"a ketonokat maga nem hasznosítja",insBrake:"inzulin = fék",mix:"Az agy üzemanyag-összetétele (vázlatos)",fedBar:"táplált",
     weeksBar:"többhetes böjt",glucoseShort:"glükóz",ketShort:"ketonok",lessAA:"kevesebb aminosav",lessGlu:"kevesebb glükóz kell",
     spared:"fehérje kímélve",cell:"Sejt",autophagosome:"autofagoszóma",lysosome:"lizoszóma",blocks:"újrahasznált építőkövek",
@@ -505,10 +557,10 @@ hu:{
       mech:["A szénhidrátok a bélben glükózzá bomlanak, és felszívódnak a vérbe. A vércukorszint emelkedésére a hasnyálmirigy béta-sejtjei inzulint bocsátanak ki.",
         "Az inzulin a raktározás jelzése. Lehetővé teszi, hogy az izom- és zsírsejtek glükózt vegyenek fel, a májat és az izmokat glikogénépítésre készteti, a zsírszövetben elősegíti a zsírraktározást — közben pedig gátolja a zsírbontást (lipolízist) és a ketontest-képzést.",
         "A glikogénraktár kapacitása korlátozott. Ha feltöltődött, a többletenergia főként zsírként raktározódik — ez a test nagy, energiadús tartaléka."],
-      mean:"Amíg az inzulin magas, a test raktározó üzemmódban van, és a zsírraktárak gyakorlatilag zárva vannak. Érdemi mennyiségű zsír csak az inzulin csökkenése után szabadulhat fel — az étkezés utáni első órák tehát a raktározásról szólnak, nem a tartalékok égetéséről."},
+      mean:"Amíg az inzulin magas, a test raktározó üzemmódban van: a magas inzulin gátolja a lipolízist és elősegíti a raktározást, így a raktározott zsírsavak nettó felszabadulása csökken. Ez az inzulin csökkenésével fordul meg — az étkezés utáni első órák tehát a raktározásról szólnak, nem a tartalékok égetéséről."},
     postabs:{name:"Posztabszorptív állapot",sh:"Posztabszorptív",lead:"A bél kiürült; a máj veszi át a glükózellátást.",
       mech:["Amikor a felszívódás véget ér, a vércukorszint visszatér az alapszint felé. Az inzulin csökken, a hasnyálmirigy alfa-sejtjei több glukagont bocsátanak ki.",
-        "A glukagon főként a májra hat: lebontja a májglikogént (glikogenolízis), és glükózt ad le a vérbe. Erre csak a máj (és kis mértékben a vese) képes, mert csak ezek rendelkeznek glükóz-6-foszfatáz enzimmel. Az izomglikogén az izomban marad, és ott használódik fel.",
+        "A glukagon főként a májra hat: lebontja a májglikogént (glikogenolízis), és glükózt ad le a vérbe. Erre főként a máj képes (a vese is hozzájárul), mert ezek rendelkeznek a glükóz-6-foszfatáz enzimmel, amely az izomból hiányzik. Az izomglikogén az izomban marad, és ott használódik fel.",
         "Ezzel párhuzamosan a máj új glükózt kezd előállítani (glukoneogenezis), az alacsonyabb inzulin mellett pedig a zsírsejtek is elkezdenek zsírsavakat leadni."],
       mean:"A vércukor étel nélkül is stabil marad, mert a máj a saját raktárát üríti. Ez a raktár kicsi, ezért ez a szakasz nem tarthat a végtelenségig — a következő váltás tehát elkerülhetetlen, nem választás kérdése."},
     switch:{name:"Az anyagcsere-váltás",sh:"Anyagcsere-váltás",lead:"A májglikogén fogy; a zsír lesz a fő üzemanyag.",
@@ -524,7 +576,7 @@ hu:{
     keto:{name:"Ketogenezis",sh:"Ketogenezis",lead:"A máj a zsírsavakat vízben oldódó üzemanyaggá alakítja.",
       mech:["Nagy mennyiségű zsírsav érkezik a májba. A májsejtek mitokondriumaiban béta-oxidációval acetil-KoA-vá bomlanak. Alacsony inzulin és magas glukagon mellett a többlet acetil-KoA ketontestekké alakul: acetoacetáttá és béta-hidroxibutiráttá (az acetoacetát kis része acetonná alakul, amely kilégzéssel távozik).",
         "A ketontestek oldódnak a vérben, könnyen bejutnak a szövetekbe, és a mitokondriumokban a zsírsavakhoz hasonlóan elégethetők. Maga a máj nem tudja felhasználni őket — hiányzik hozzá a szükséges enzim —, ezért exportálja őket.",
-        "Az inzulin fékezi ezt a folyamatot. Normálisan működő hasnyálmirigy esetén mindig marad némi inzulin, ami a ketonszintet korlátozott tartományban tartja. Diabéteszes ketoacidózisban az inzulin kritikusan hiányzik, a fék nem működik, és a ketonok a glükózzal együtt veszélyes szintre emelkednek — ez egy másik állapot."],
+        "Az inzulin fékezi ezt a folyamatot. Normálisan működő hasnyálmirigy esetén továbbra is marad némi inzulin, ami a ketonszintet korlátozott tartományban tartja. Diabéteszes ketoacidózisban az inzulin kritikusan hiányzik, a fék nem működik, és a ketonok a glükózzal együtt veszélyes szintre emelkednek — ez egy másik állapot."],
       mean:"A ketontestekkel a máj „becsomagolja” a zsírt azoknak a szöveteknek, amelyek közvetlenül nem tudják jól hasznosítani. Szintjük napok alatt fokozatosan emelkedik, ezért hatásuk az idővel nő, nem egy meghatározott órában jelenik meg."},
     brain:{name:"Az agy ketonokon",sh:"Az agy ketonokon",lead:"Az agy fokozatosan áthelyezi üzemanyagának egy részét a glükózról a ketonokra.",
       mech:["Táplált állapotban az agy szinte kizárólag glükózt használ. A szabad zsírsavak alig jutnak át a vér–agy gáton, és nem jelentős agyi üzemanyagok.",
@@ -559,18 +611,23 @@ ro:{
   dec:",",
   u:{h:"ore",d:"zile",wk:"săpt.",day:"zi",uncertain:"moment incert",atEnd:"la finalul postului",varies:"Intervalul este aproximativ și variază de la o persoană la alta."},
   ui:{brand:"Post",skip:"Sari la conținut",navLabel:"Navigare principală",langLabel:"Limbă",close:"Închide",prev:"Anterior",next:"Următor",
-    mech:"Mecanism",figs:"Cifre-cheie",mean:"Ce înseamnă asta?",diagCap:"Schemă în stil desenat de mână — nu este la scară.",
+    mech:"Mecanism",figs:"Cifre-cheie",mean:"Ce înseamnă asta?",diagCap:"Diagramă schematică — nu este la scară.",evidence:"Nivel de dovezi",
+    refeedNote:"Această stație explică fiziologia și riscul clinic. Nu este un ghid pentru post prelungit și nici pentru gestionarea pe cont propriu a realimentării. Criteriile NICE de mai jos sunt criterii de risc clinic pentru profesioniști, nu un instrument de autoevaluare.",
     station:"Stația",menuSub:"Mecanism, nu reguli",menuOpen:"Deschide meniul",collapse:"Restrânge meniul",expand:"Extinde meniul",footer:"Material educativ explicativ · licență MIT · fără urmărire, fără cookie-uri"},
   nav:{map:"Cronologie",chart:"Grafic de combustibil",videos:"Videoclipuri",sources:"Surse"},
   pal:{label:"Schemă de culori",ember:"Jar",ketone:"Cetonă",dawn:"Zori"},
+  safety:{h:"Notă de siguranță:",p:"această pagină este un material educativ explicativ, nu un protocol de post și nici sfat medical. Postul prelungit poate fi nesigur pentru copii și adolescenți, persoanele cu diabet sau care iau medicamente în mod regulat, femeile însărcinate sau care alăptează, persoanele cu antecedente de tulburări de alimentație și persoanele cu afecțiuni medicale semnificative."},
+  ev:{"HUMAN STUDY":"Studiu la om","SMALL HUMAN STUDY":"Studiu mic la om","ANIMAL":"Studiu pe animale","CELL":"Studiu celular","REVIEW":"Articol de sinteză","GUIDELINE":"Ghid clinic","TEXTBOOK ESTIMATE":"Estimare din manual","REFERENCE RANGE":"Interval de referință","SCHEMATIC":"Schematic"},
+  ctx:{f14h:"post de 14 ore",f22h:"post de 22 de ore",f42h:"post de 42 de ore",f5d:"post de 5 zile",f23d:"post de 2–3 zile",f56wk:"post de 5–6 săptămâni",f21d:"post de 21 de zile",f84h:"post de 84 de ore",mice:"șoareci · post scurt"},
   hero:{kicker:"Fiziologia postului",h1:"Ce face corpul tău când nu mai mănânci",
     p:"Aici nu există reguli. Nicio listă de alimente, niciun „ține post X zile, mănâncă Y”. Doar mecanismul — explicat suficient de profund încât concluziile să devină evidente de la sine. Corpul este un sistem fizic; această pagină te învață să-l citești.",
     note:"Toate intervalele de timp sunt aproximative și variază de la o persoană la alta: depind de ultima masă, activitatea fizică, compoziția corporală, vârstă și starea de sănătate."},
   map:{h:"Drumul unui post",p:"Zece stații. Alege una pentru a vedea mecanismul, cifrele-cheie și ce decurge din ele."},
-  chart:{h:"Grafic de combustibil, 0–72 ore",badge:"aproximativ, ilustrativ",
+  chart:{h:"Grafic de combustibil, 0–72 ore",badge:"Model conceptual — nu date măsurate la om",
     p:"Trage cursorul prin primele trei zile. Curbele sunt aproximative și ilustrative — arată direcția și ordinea, nu valori măsurate.",
-    slider:"Ore de la ultima masă",yAxis:"nivel relativ",xAxis:"ore de la ultima masă",wm:"aproximativ, ilustrativ",
-    gantt:"Intervalele stațiilor (banda estompată = variație individuală)",focus:"În prim-plan:",also:"Au loc în paralel:",none:"—",
+    slider:"Ore de la ultima masă",yAxis:"nivel conceptual relativ",xAxis:"ore de la ultima masă",wm:"model conceptual",
+    gantt:"Intervalele stațiilor (legenda se află sub grafic)",
+    bars:{rep:"bandă plină = interval tipic (cel din etichetă)",onset:"bandă estompată = interval raportat mai larg, variație individuală",unc:"contur punctat = moment incert la om",cont:"continuă după 72 de ore",anc:"cerc = punct ales manual pe curba conceptuală"},focus:"În prim-plan:",also:"Au loc în paralel:",none:"—",
     aria:"Grafic ilustrativ: glicemie, insulină, glucagon, acizi grași liberi, corpi cetonici și glicogen hepatic între 0 și 72 de ore."},
   cv:{glu:"Glicemie",ins:"Insulină",gcg:"Glucagon",ffa:"Acizi grași liberi",ket:"Corpi cetonici",gly:"Glicogen hepatic"},
   lv:["foarte scăzut","scăzut","moderat","ridicat","foarte ridicat"],
@@ -581,46 +638,46 @@ ro:{
     fastGlu:"Intervalul normal al glicemiei a jeun",
     liverGly:"Glicogen hepatic la adult (estimare aproximativă din manuale; variază mult)",
     muscleGly:"Glicogen muscular în tot corpul (estimare aproximativă din manuale; depinde de masa musculară și de antrenament)",
-    gng14:"Proporția din producția hepatică de glucoză care provine din gluconeogeneză după 14 ore de post (Landau 1996; studiu mic)",
-    gng22:"Aceeași proporție după 22 de ore (același studiu)",
-    gng42:"Aceeași proporție după 42 de ore — aproape toată producția de glucoză (același studiu)",
-    glu5d:"Glicemia în ziua 1 și în ziua 5 de post — mai scăzută, dar în continuare reglată (Ho 1988; 6 bărbați)",
-    switchWin:"Intervalul tipic al comutării metabolice; depinde de glicogenul hepatic inițial și de activitatea fizică (Anton 2018)",
-    ffa5d:"Acizii grași liberi plasmatici în ziua 1 și în ziua 5 de post (Ho 1988)",
-    acac5d:"Creșterea acetoacetatului (un corp cetonic) în sânge între ziua 1 și ziua 5 de post (Ho 1988)",
-    brainBhb:"Beta-hidroxibutiratul din creier, măsurat prin spectroscopie RM: în stare de hrănire și după 3 zile de post (Pan 2000; studiu mic)",
-    brainWeeks:"Durata postului după care corpii cetonici înlocuiseră glucoza ca principal combustibil al creierului (Owen 1967; 3 pacienți)",
-    aaEnergy:"Proporția energiei provenite din oxidarea aminoacizilor la finalul unui post de 21 de zile (Owen 1998; 5 participanți)",
-    alanine:"Alanina plasmatică — principalul aminoacid glucoformator — scade, astfel că ficatul preia mai puțină, iar descompunerea proteinelor este redusă la minimum (Felig 1969)",
-    mouseAuto:"După un post de scurtă durată, autofagozomii din neuronii șoarecilor au crescut puternic — nu se transferă direct la om (Alirezaei 2010)",
+    gng14:"Proporția din producția hepatică de glucoză care provine din gluconeogeneză după 14 ore de post",
+    gng22:"Aceeași proporție după 22 de ore",
+    gng42:"Aceeași proporție după 42 de ore — aproape toată producția de glucoză",
+    glu5d:"Glicemia în ziua 1 și în ziua 5 de post — mai scăzută, dar în continuare reglată",
+    switchWin:"Intervalul tipic al comutării metabolice; depinde de glicogenul hepatic inițial și de activitatea fizică",
+    ffa5d:"Acizii grași liberi plasmatici în ziua 1 și în ziua 5 de post",
+    acac5d:"Creșterea acetoacetatului (un corp cetonic) în sânge între ziua 1 și ziua 5 de post",
+    brainBhb:"Beta-hidroxibutiratul din creier, măsurat prin spectroscopie RM: în stare de hrănire și după 3 zile de post",
+    brainWeeks:"Durata postului după care corpii cetonici înlocuiseră glucoza ca principal combustibil al creierului",
+    aaEnergy:"Proporția energiei provenite din oxidarea aminoacizilor la finalul unui post de 21 de zile",
+    alanine:"Alanina plasmatică — principalul aminoacid glucoformator — scade, astfel că ficatul preia mai puțină, iar descompunerea proteinelor este redusă la minimum",
+    mouseAuto:"După un post de scurtă durată, autofagozomii din neuronii șoarecilor au crescut puternic — nu se transferă direct la om",
     humanAuto:"Metodă validată de măsurare la nivelul întregului corp la oameni vii",
-    ghFold:"Nivelul hormonului de creștere pe 24 de ore în ziua 5 de post față de o zi cu alimentație normală (Ho 1988)",
-    noraFold:"Modificarea noradrenalinei serice între ziua 1 și ziua 4 de post (Zauner 2000; 11 participanți)",
-    reeUp:"Modificarea cheltuielii energetice de repaus între ziua 1 și ziua 3 de post (Zauner 2000)",
+    ghFold:"Nivelul hormonului de creștere pe 24 de ore în ziua 5 de post față de o zi cu alimentație normală",
+    noraFold:"Modificarea noradrenalinei serice între ziua 1 și ziua 4 de post",
+    reeUp:"Modificarea cheltuielii energetice de repaus între ziua 1 și ziua 3 de post",
     serumNa:"Intervalul normal al sodiului seric",
     serumK:"Intervalul normal al potasiului seric",
     serumP:"Intervalul normal al fosfatului seric (adult; intervalele diferă între laboratoare)",
-    nice10:"Un aport alimentar redus sau absent peste această durată reprezintă în sine un risc ridicat de sindrom de realimentare (NICE CG32)",
-    nice5:"Un aport redus sau absent peste această durată reprezintă un risc ridicat dacă există și un alt factor de risc (NICE CG32)"},
+    nice10:"Criteriu de risc clinic (nu instrument de autoevaluare): un aport alimentar redus sau absent peste această durată reprezintă în sine un risc ridicat de sindrom de realimentare",
+    nice5:"Criteriu de risc clinic (nu instrument de autoevaluare): un aport redus sau absent peste această durată reprezintă un risc ridicat dacă există și un alt factor de risc"},
   dl:{gut:"Intestin",blood:"Sânge",liver:"Ficat",muscle:"Mușchi",fat:"Țesut adipos",pancreas:"Pancreas",brain:"Creier",rbc:"Globule roșii",kidney:"Rinichi",
     cells:"Celule",food:"Hrană",pituitary:"Hipofiză",symp:"Sistemul nervos simpatic",glyWaterNode:"Glicogen + apă",
     glucose:"glucoză",insulinUp:"insulină ↑",insulinDown:"insulină ↓",glucagonUp:"glucagon ↑",toGlycogen:"→ glicogen",toFat:"→ grăsime",
-    lipoBlocked:"lipoliză blocată",ownGly:"își folosește propriul glicogen",ffa:"acizi grași",glycogenLow:"glicogen în scădere",glycerol:"glicerol",
-    lactate:"lactat (Cori)",aa:"aminoacizi",faNot:"acizi grași → glucoză: imposibil",ketones:"cetone",bho:"β-oxidare → acetil-CoA",
+    lipoBlocked:"lipoliză inhibată",ownGly:"își folosește propriul glicogen",ffa:"acizi grași",glycogenLow:"glicogen în scădere",glycerol:"glicerol",
+    lactate:"lactat (Cori)",aa:"aminoacizi",faNot:"acizi grași → glucoză: fără conversie netă",ketones:"cetone",bho:"β-oxidare → acetil-CoA",
     noUse:"nu folosește el însuși cetonele",insBrake:"insulina = frână",mix:"Amestecul de combustibil al creierului (schematic)",fedBar:"hrănit",
-    weeksBar:"post de mai multe săptămâni",glucoseShort:"glucoză",ketShort:"cetone",lessAA:"mai puțini aminoacizi",lessGlu:"mai puțină glucoză necesară",
+    weeksBar:"săptămâni de post",glucoseShort:"glucoză",ketShort:"cetone",lessAA:"mai puțini aminoacizi",lessGlu:"mai puțină glucoză necesară",
     spared:"proteine economisite",cell:"Celulă",autophagosome:"autofagozom",lysosome:"lizozom",blocks:"elemente reutilizate",
     uncertain:"momentul la om: incert",gh:"hormon de creștere ↑",nora:"noradrenalină ↑",water:"apă eliberată",excreted:"eliminat",
     insLowNa:"insulină scăzută → mai mult Na⁺ eliminat",intoCells:"în celule",bloodDrop:"niveluri sanguine ↓"},
   st:{
     fed:{name:"Starea de hrănire",sh:"Starea de hrănire",lead:"Glucoza intră în sânge, insulina crește, corpul stochează.",
       mech:["Carbohidrații sunt descompuși în intestin până la glucoză, care este absorbită în sânge. Creșterea glicemiei determină celulele beta din pancreas să elibereze insulină.",
-        "Insulina este semnalul de stocare. Permite celulelor musculare și adipoase să preia glucoza, stimulează ficatul și mușchii să formeze glicogen, favorizează depozitarea grăsimilor în țesutul adipos — și în același timp blochează eliberarea grăsimilor (lipoliza) și producția de corpi cetonici.",
+        "Insulina este semnalul de stocare. Permite celulelor musculare și adipoase să preia glucoza, stimulează ficatul și mușchii să formeze glicogen, favorizează depozitarea grăsimilor în țesutul adipos — și în același timp inhibă eliberarea grăsimilor (lipoliza) și producția de corpi cetonici.",
         "Capacitatea de stocare a glicogenului este limitată. Odată ce depozitele sunt pline, surplusul de energie este stocat în principal sub formă de grăsime — rezerva mare și bogată în energie a corpului."],
-      mean:"Cât timp insulina este ridicată, corpul este în modul de stocare, iar depozitele de grăsime sunt practic blocate. Grăsimea nu poate fi eliberată în cantități semnificative până nu scade insulina — primele ore după masă sunt dedicate stocării, nu arderii rezervelor."},
+      mean:"Cât timp insulina este ridicată, corpul este în modul de stocare: insulina crescută inhibă lipoliza și favorizează stocarea, astfel că eliberarea netă a acizilor grași stocați este redusă. Situația se inversează pe măsură ce insulina scade — primele ore după masă sunt dedicate stocării, nu arderii rezervelor."},
     postabs:{name:"Starea postabsorbtivă",sh:"Postabsorbtivă",lead:"Intestinul s-a golit; ficatul preia aprovizionarea cu glucoză.",
       mech:["Când absorbția se încheie, glicemia revine spre valoarea de bază. Insulina scade, iar celulele alfa din pancreas eliberează mai mult glucagon.",
-        "Glucagonul acționează în principal asupra ficatului: descompune glicogenul hepatic (glicogenoliză) și eliberează glucoză în sânge. Doar ficatul (și, într-o mică măsură, rinichiul) poate face acest lucru, deoarece doar aceste organe au enzima glucozo-6-fosfatază. Glicogenul muscular rămâne în mușchi și este folosit acolo.",
+        "Glucagonul acționează în principal asupra ficatului: descompune glicogenul hepatic (glicogenoliză) și eliberează glucoză în sânge. Acest lucru îl poate face în principal ficatul (contribuie și rinichiul), deoarece aceste organe au enzima glucozo-6-fosfatază, care lipsește din mușchi. Glicogenul muscular rămâne în mușchi și este folosit acolo.",
         "În paralel, ficatul începe să producă glucoză nouă (gluconeogeneză), iar, cu insulina mai scăzută, celulele adipoase încep să elibereze acizi grași."],
       mean:"Glicemia rămâne stabilă fără mâncare pentru că ficatul își eliberează rezerva. Această rezervă este mică, de aceea faza nu poate dura la nesfârșit — iar următoarea schimbare este inevitabilă, nu opțională."},
     switch:{name:"Comutarea metabolică",sh:"Comutarea metabolică",lead:"Glicogenul hepatic scade; grăsimea devine principalul combustibil.",
@@ -636,7 +693,7 @@ ro:{
     keto:{name:"Cetogeneza",sh:"Cetogeneza",lead:"Ficatul transformă acizii grași într-un combustibil solubil în apă.",
       mech:["Cantități mari de acizi grași ajung la ficat. În mitocondriile hepatice sunt descompuși prin beta-oxidare până la acetil-CoA. Cu insulină scăzută și glucagon ridicat, surplusul de acetil-CoA este transformat în corpi cetonici: acetoacetat și beta-hidroxibutirat (o mică parte din acetoacetat devine acetonă, eliminată prin respirație).",
         "Corpii cetonici se dizolvă în sânge, pătrund ușor în țesuturi și pot fi arși în mitocondrii asemănător acizilor grași. Ficatul însuși nu îi poate folosi — îi lipsește enzima necesară — așa că îi exportă.",
-        "Insulina frânează acest proces. La persoanele cu pancreas funcțional rămâne mereu o cantitate de insulină, care menține nivelul cetonelor într-un interval limitat. În cetoacidoza diabetică insulina lipsește critic, frâna cedează, iar cetonele și glucoza cresc la niveluri periculoase — o stare diferită."],
+        "Insulina frânează acest proces. La persoanele cu pancreas funcțional rămâne în continuare o cantitate de insulină, care menține nivelul cetonelor într-un interval limitat. În cetoacidoza diabetică insulina lipsește critic, frâna cedează, iar cetonele și glucoza cresc la niveluri periculoase — o stare diferită."],
       mean:"Prin corpii cetonici, ficatul „ambalează” grăsimea pentru țesuturile care nu o pot folosi bine direct. Nivelul lor crește treptat, pe parcursul zilelor, de aceea efectele lor se amplifică în timp, nu apar la o oră anume."},
     brain:{name:"Creierul trece pe cetone",sh:"Creierul trece pe cetone",lead:"Creierul își mută treptat o parte din combustibil de pe glucoză pe cetone.",
       mech:["În starea de hrănire, creierul folosește aproape exclusiv glucoză. Acizii grași liberi abia traversează bariera hemato-encefalică și nu sunt un combustibil cerebral semnificativ.",
@@ -671,18 +728,23 @@ de:{
   dec:",",
   u:{h:"Std.",d:"Tage",wk:"Wo.",day:"Tag",uncertain:"zeitlich unsicher",atEnd:"am Ende des Fastens",varies:"Das Zeitfenster ist ungefähr und von Mensch zu Mensch verschieden."},
   ui:{brand:"Fasten",skip:"Zum Inhalt springen",navLabel:"Hauptnavigation",langLabel:"Sprache",close:"Schließen",prev:"Zurück",next:"Weiter",
-    mech:"Mechanismus",figs:"Kennzahlen",mean:"Was bedeutet das?",diagCap:"Schematische Skizze im Handzeichnungsstil — nicht maßstabsgetreu.",
+    mech:"Mechanismus",figs:"Kennzahlen",mean:"Was bedeutet das?",diagCap:"Schematische Darstellung — nicht maßstabsgetreu.",evidence:"Evidenzgrad",
+    refeedNote:"Diese Station erklärt Physiologie und klinisches Risiko. Sie ist keine Anleitung für längeres Fasten und nicht dafür gedacht, die Wiederernährung selbst zu steuern. Die NICE-Kriterien unten sind klinische Risikokriterien für Fachleute, kein Selbsttest.",
     station:"Station",menuSub:"Mechanismus statt Regeln",menuOpen:"Menü öffnen",collapse:"Menü einklappen",expand:"Menü ausklappen",footer:"Lehrmaterial · MIT-Lizenz · kein Tracking, keine Cookies"},
   nav:{map:"Zeitleiste",chart:"Brennstoff-Diagramm",videos:"Videos",sources:"Quellen"},
   pal:{label:"Farbschema",ember:"Glut",ketone:"Keton",dawn:"Morgenrot"},
+  safety:{h:"Sicherheitshinweis:",p:"Diese Seite ist ein Lehrangebot, kein Fastenprotokoll und keine medizinische Beratung. Längeres Fasten kann unsicher sein für Kinder und Jugendliche, Menschen mit Diabetes oder regelmäßiger Medikamenteneinnahme, Schwangere und Stillende, Menschen mit einer Essstörung in der Vorgeschichte sowie Menschen mit erheblichen Vorerkrankungen."},
+  ev:{"HUMAN STUDY":"Humanstudie","SMALL HUMAN STUDY":"Kleine Humanstudie","ANIMAL":"Tierstudie","CELL":"Zellstudie","REVIEW":"Übersichtsarbeit","GUIDELINE":"Leitlinie","TEXTBOOK ESTIMATE":"Lehrbuchschätzung","REFERENCE RANGE":"Referenzbereich","SCHEMATIC":"Schematisch"},
+  ctx:{f14h:"14-stündiges Fasten",f22h:"22-stündiges Fasten",f42h:"42-stündiges Fasten",f5d:"5-tägiges Fasten",f23d:"2–3-tägiges Fasten",f56wk:"5–6-wöchiges Fasten",f21d:"21-tägiges Fasten",f84h:"84-stündiges Fasten",mice:"Mäuse · kurzes Fasten"},
   hero:{kicker:"Physiologie des Fastens",h1:"Was dein Körper tut, wenn du aufhörst zu essen",
     p:"Hier gibt es keine Regeln. Keine Lebensmittellisten, kein „faste X Tage, iss Y“. Nur der Mechanismus — so gründlich erklärt, dass sich die Schlussfolgerungen von selbst ergeben. Der Körper ist ein physikalisches System; diese Seite lehrt dich, es zu lesen.",
     note:"Alle Zeitfenster sind Spannen und unterscheiden sich von Mensch zu Mensch: Sie hängen von der letzten Mahlzeit, körperlicher Aktivität, Körperzusammensetzung, Alter und Gesundheit ab."},
   map:{h:"Der Verlauf des Fastens",p:"Zehn Stationen. Wähle eine aus, um den Mechanismus, die Kennzahlen und die Folgerungen daraus zu sehen."},
-  chart:{h:"Brennstoff-Diagramm, 0–72 Std.",badge:"ungefähr, illustrativ",
+  chart:{h:"Brennstoff-Diagramm, 0–72 Std.",badge:"Konzeptmodell — keine gemessenen Humandaten",
     p:"Ziehe den Regler durch die ersten drei Tage. Die Kurven sind ungefähr und illustrativ — sie zeigen Richtung und Reihenfolge, keine Messwerte.",
-    slider:"Stunden seit der letzten Mahlzeit",yAxis:"relatives Niveau",xAxis:"Stunden seit der letzten Mahlzeit",wm:"ungefähr, illustrativ",
-    gantt:"Zeitfenster der Stationen (blasser Balken = individuelle Schwankung)",focus:"Im Fokus:",also:"Läuft parallel:",none:"—",
+    slider:"Stunden seit der letzten Mahlzeit",yAxis:"relatives konzeptuelles Niveau",xAxis:"Stunden seit der letzten Mahlzeit",wm:"Konzeptmodell",
+    gantt:"Zeitfenster der Stationen (Legende unter dem Diagramm)",
+    bars:{rep:"kräftiger Balken = typisches Zeitfenster (wie in der Beschriftung)",onset:"blasser Balken = breiterer berichteter Bereich, individuelle Schwankung",unc:"gestrichelter Rahmen = Zeitverlauf beim Menschen unsicher",cont:"setzt sich über 72 Std. hinaus fort",anc:"Kreis = von Hand gewählter Punkt der Konzeptkurve"},focus:"Im Fokus:",also:"Läuft parallel:",none:"—",
     aria:"Illustratives Diagramm: Blutzucker, Insulin, Glukagon, freie Fettsäuren, Ketonkörper und Leberglykogen zwischen 0 und 72 Stunden."},
   cv:{glu:"Blutzucker",ins:"Insulin",gcg:"Glukagon",ffa:"Freie Fettsäuren",ket:"Ketonkörper",gly:"Leberglykogen"},
   lv:["sehr niedrig","niedrig","mittel","hoch","sehr hoch"],
@@ -693,32 +755,32 @@ de:{
     fastGlu:"Normalbereich des Nüchternblutzuckers",
     liverGly:"Leberglykogen bei Erwachsenen (grobe Lehrbuchschätzung; stark variabel)",
     muscleGly:"Muskelglykogen im ganzen Körper (grobe Lehrbuchschätzung; abhängig von Muskelmasse und Training)",
-    gng14:"Anteil der Glukoseabgabe der Leber, der nach 14 Stunden Fasten aus der Glukoneogenese stammt (Landau 1996; kleine Studie)",
-    gng22:"Derselbe Anteil nach 22 Stunden (dieselbe Studie)",
-    gng42:"Derselbe Anteil nach 42 Stunden — dann fast die gesamte Glukoseproduktion (dieselbe Studie)",
-    glu5d:"Blutzucker am 1. und 5. Fastentag — niedriger, aber weiterhin reguliert (Ho 1988; 6 Männer)",
-    switchWin:"Typisches Zeitfenster des metabolischen Wechsels; abhängig vom anfänglichen Leberglykogen und von körperlicher Aktivität (Anton 2018)",
-    ffa5d:"Freie Fettsäuren im Plasma am 1. und 5. Fastentag (Ho 1988)",
-    acac5d:"Anstieg des Acetoacetats (eines Ketonkörpers) im Blut zwischen dem 1. und 5. Fastentag (Ho 1988)",
-    brainBhb:"Beta-Hydroxybutyrat im Gehirn, gemessen mit MR-Spektroskopie: gesättigt und nach 3 Tagen Fasten (Pan 2000; kleine Studie)",
-    brainWeeks:"Fastendauer, nach der Ketonkörper die Glukose als wichtigsten Brennstoff des Gehirns abgelöst hatten (Owen 1967; 3 Patienten)",
-    aaEnergy:"Anteil der Energie aus Aminosäureoxidation am Ende eines 21-tägigen Fastens (Owen 1998; 5 Teilnehmende)",
-    alanine:"Plasma-Alanin — die wichtigste glukogene Aminosäure — sinkt; die Leber nimmt weniger davon auf, und der Proteinabbau wird minimiert (Felig 1969)",
-    mouseAuto:"Nach kurzem Fasten nahmen die Autophagosomen in Nervenzellen von Mäusen deutlich zu — nicht direkt auf Menschen übertragbar (Alirezaei 2010)",
+    gng14:"Anteil der Glukoseabgabe der Leber, der nach 14 Stunden Fasten aus der Glukoneogenese stammt",
+    gng22:"Derselbe Anteil nach 22 Stunden",
+    gng42:"Derselbe Anteil nach 42 Stunden — dann fast die gesamte Glukoseproduktion",
+    glu5d:"Blutzucker am 1. und 5. Fastentag — niedriger, aber weiterhin reguliert",
+    switchWin:"Typisches Zeitfenster des metabolischen Wechsels; abhängig vom anfänglichen Leberglykogen und von körperlicher Aktivität",
+    ffa5d:"Freie Fettsäuren im Plasma am 1. und 5. Fastentag",
+    acac5d:"Anstieg des Acetoacetats (eines Ketonkörpers) im Blut zwischen dem 1. und 5. Fastentag",
+    brainBhb:"Beta-Hydroxybutyrat im Gehirn, gemessen mit MR-Spektroskopie: gesättigt und nach 3 Tagen Fasten",
+    brainWeeks:"Fastendauer, nach der Ketonkörper die Glukose als wichtigsten Brennstoff des Gehirns abgelöst hatten",
+    aaEnergy:"Anteil der Energie aus Aminosäureoxidation am Ende eines 21-tägigen Fastens",
+    alanine:"Plasma-Alanin — die wichtigste glukogene Aminosäure — sinkt; die Leber nimmt weniger davon auf, und der Proteinabbau wird minimiert",
+    mouseAuto:"Nach kurzem Fasten nahmen die Autophagosomen in Nervenzellen von Mäusen deutlich zu — nicht direkt auf Menschen übertragbar",
     humanAuto:"Validierte Ganzkörper-Messmethode beim lebenden Menschen",
-    ghFold:"24-Stunden-Wachstumshormonspiegel am 5. Fastentag im Vergleich zu einem Tag mit normaler Ernährung (Ho 1988)",
-    noraFold:"Veränderung des Serum-Noradrenalins zwischen dem 1. und 4. Fastentag (Zauner 2000; 11 Teilnehmende)",
-    reeUp:"Veränderung des Ruheenergieumsatzes zwischen dem 1. und 3. Fastentag (Zauner 2000)",
+    ghFold:"24-Stunden-Wachstumshormonspiegel am 5. Fastentag im Vergleich zu einem Tag mit normaler Ernährung",
+    noraFold:"Veränderung des Serum-Noradrenalins zwischen dem 1. und 4. Fastentag",
+    reeUp:"Veränderung des Ruheenergieumsatzes zwischen dem 1. und 3. Fastentag",
     serumNa:"Normalbereich des Serum-Natriums",
     serumK:"Normalbereich des Serum-Kaliums",
     serumP:"Normalbereich des Serum-Phosphats (Erwachsene; laborabhängig)",
-    nice10:"Geringe oder keine Nahrungsaufnahme über diese Dauer hinaus gilt schon allein als hohes Refeeding-Risiko (NICE CG32)",
-    nice5:"Geringe oder keine Nahrungsaufnahme über diese Dauer hinaus gilt als hohes Risiko, wenn ein weiterer Risikofaktor hinzukommt (NICE CG32)"},
+    nice10:"Klinisches Risikokriterium (kein Selbsttest): Geringe oder keine Nahrungsaufnahme über diese Dauer hinaus gilt schon allein als hohes Refeeding-Risiko",
+    nice5:"Klinisches Risikokriterium (kein Selbsttest): Geringe oder keine Nahrungsaufnahme über diese Dauer hinaus gilt als hohes Risiko, wenn ein weiterer Risikofaktor hinzukommt"},
   dl:{gut:"Darm",blood:"Blut",liver:"Leber",muscle:"Muskel",fat:"Fettgewebe",pancreas:"Bauchspeicheldrüse",brain:"Gehirn",rbc:"Rote Blutkörperchen",kidney:"Niere",
     cells:"Zellen",food:"Nahrung",pituitary:"Hypophyse",symp:"Sympathikus",glyWaterNode:"Glykogen + Wasser",
     glucose:"Glukose",insulinUp:"Insulin ↑",insulinDown:"Insulin ↓",glucagonUp:"Glukagon ↑",toGlycogen:"→ Glykogen",toFat:"→ Fett",
     lipoBlocked:"Lipolyse gehemmt",ownGly:"nutzt eigenes Glykogen",ffa:"Fettsäuren",glycogenLow:"Glykogen geht zur Neige",glycerol:"Glycerin",
-    lactate:"Laktat (Cori)",aa:"Aminosäuren",faNot:"Fettsäure → Glukose: nicht möglich",ketones:"Ketone",bho:"β-Oxidation → Acetyl-CoA",
+    lactate:"Laktat (Cori)",aa:"Aminosäuren",faNot:"Fettsäure → Glukose: keine Nettoumwandlung",ketones:"Ketone",bho:"β-Oxidation → Acetyl-CoA",
     noUse:"nutzt Ketone nicht selbst",insBrake:"Insulin = Bremse",mix:"Brennstoffmix des Gehirns (schematisch)",fedBar:"gesättigt",
     weeksBar:"wochenlanges Fasten",glucoseShort:"Glukose",ketShort:"Ketone",lessAA:"weniger Aminosäuren",lessGlu:"weniger Glukose nötig",
     spared:"Protein geschont",cell:"Zelle",autophagosome:"Autophagosom",lysosome:"Lysosom",blocks:"Bausteine wiederverwendet",
@@ -729,10 +791,10 @@ de:{
       mech:["Kohlenhydrate werden im Darm zu Glukose abgebaut und ins Blut aufgenommen. Der Anstieg des Blutzuckers veranlasst die Betazellen der Bauchspeicheldrüse, Insulin auszuschütten.",
         "Insulin ist das Speichersignal. Es lässt Muskel- und Fettzellen Glukose aufnehmen, bringt Leber und Muskeln dazu, Glykogen aufzubauen, fördert die Fetteinlagerung im Fettgewebe — und hemmt gleichzeitig die Fettfreisetzung (Lipolyse) und die Bildung von Ketonkörpern.",
         "Die Glykogenspeicher sind begrenzt. Sind sie gefüllt, wird überschüssige Energie hauptsächlich als Fett gespeichert — die große, energiedichte Reserve des Körpers."],
-      mean:"Solange Insulin hoch ist, ist der Körper im Speichermodus, und die Fettspeicher sind praktisch verschlossen. Fett kann erst in nennenswerter Menge freigesetzt werden, wenn das Insulin sinkt — die ersten Stunden nach einer Mahlzeit dienen also dem Speichern, nicht dem Verbrennen von Reserven."},
+      mean:"Solange Insulin hoch ist, ist der Körper im Speichermodus: Hohes Insulin hemmt die Lipolyse und fördert die Speicherung, sodass die Nettofreisetzung gespeicherter Fettsäuren verringert ist. Das kehrt sich um, wenn das Insulin sinkt — die ersten Stunden nach einer Mahlzeit dienen also dem Speichern, nicht dem Verbrennen von Reserven."},
     postabs:{name:"Postresorptive Phase",sh:"Postresorptiv",lead:"Der Darm ist leer; die Leber übernimmt die Glukoseversorgung.",
       mech:["Wenn die Nährstoffaufnahme aus dem Darm endet, sinkt der Blutzucker wieder Richtung Ausgangswert. Insulin fällt, und die Alphazellen der Bauchspeicheldrüse schütten mehr Glukagon aus.",
-        "Glukagon wirkt vor allem auf die Leber: Es baut Leberglykogen ab (Glykogenolyse) und gibt Glukose ins Blut ab. Das kann nur die Leber (und in geringem Maß die Niere), denn nur sie besitzen das Enzym Glukose-6-Phosphatase. Muskelglykogen bleibt im Muskel und wird dort verbraucht.",
+        "Glukagon wirkt vor allem auf die Leber: Es baut Leberglykogen ab (Glykogenolyse) und gibt Glukose ins Blut ab. Das kann vor allem die Leber (auch die Niere trägt bei), denn diese Organe besitzen das Enzym Glukose-6-Phosphatase, das dem Muskel fehlt. Muskelglykogen bleibt im Muskel und wird dort verbraucht.",
         "Parallel beginnt die Leber, neue Glukose herzustellen (Glukoneogenese), und bei niedrigerem Insulin geben Fettzellen erste Fettsäuren ab."],
       mean:"Der Blutzucker bleibt ohne Nahrung stabil, weil die Leber ihren Speicher leert. Dieser Speicher ist klein, deshalb kann diese Phase nicht beliebig lange dauern — und der nächste Wechsel ist unvermeidlich, nicht optional."},
     switch:{name:"Der metabolische Wechsel",sh:"Metabolischer Wechsel",lead:"Das Leberglykogen geht zur Neige; Fett wird zum Hauptbrennstoff.",
@@ -748,7 +810,7 @@ de:{
     keto:{name:"Ketogenese",sh:"Ketogenese",lead:"Die Leber verwandelt Fettsäuren in einen wasserlöslichen Brennstoff.",
       mech:["Große Mengen Fettsäuren erreichen die Leber. In den Lebermitochondrien werden sie durch Beta-Oxidation zu Acetyl-CoA abgebaut. Bei niedrigem Insulin und hohem Glukagon wird überschüssiges Acetyl-CoA zu Ketonkörpern umgebaut: Acetoacetat und Beta-Hydroxybutyrat (ein kleiner Teil des Acetoacetats wird zu Aceton, das abgeatmet wird).",
         "Ketonkörper lösen sich im Blut, gelangen leicht in die Gewebe und können in den Mitochondrien ähnlich wie Fettsäuren verbrannt werden. Die Leber selbst kann sie nicht nutzen — ihr fehlt das nötige Enzym —, deshalb exportiert sie sie.",
-        "Insulin bremst diesen Prozess. Bei normal funktionierender Bauchspeicheldrüse bleibt immer etwas Insulin vorhanden, das die Ketonspiegel in einem begrenzten Bereich hält. Bei der diabetischen Ketoazidose fehlt Insulin kritisch, die Bremse versagt, und Ketone sowie Glukose steigen auf gefährliche Werte — ein anderer Zustand."],
+        "Insulin bremst diesen Prozess. Bei normal funktionierender Bauchspeicheldrüse bleibt weiterhin etwas Insulin vorhanden, das die Ketonspiegel in einem begrenzten Bereich hält. Bei der diabetischen Ketoazidose fehlt Insulin kritisch, die Bremse versagt, und Ketone sowie Glukose steigen auf gefährliche Werte — ein anderer Zustand."],
       mean:"Mit Ketonkörpern „verpackt“ die Leber Fett für Gewebe, die Fett direkt nicht gut verwerten können. Ihr Spiegel steigt über Tage allmählich, deshalb wachsen ihre Wirkungen mit der Zeit, statt zu einer festen Stunde einzusetzen."},
     brain:{name:"Das Gehirn nutzt Ketone",sh:"Gehirn nutzt Ketone",lead:"Das Gehirn verlagert einen Teil seines Brennstoffs allmählich von Glukose auf Ketone.",
       mech:["Im gesättigten Zustand läuft das Gehirn fast ausschließlich mit Glukose. Freie Fettsäuren überwinden die Blut-Hirn-Schranke kaum und sind kein nennenswerter Brennstoff für das Gehirn.",
@@ -783,18 +845,23 @@ en:{
   dec:".",
   u:{h:"h",d:"days",wk:"wk",day:"day",uncertain:"timing uncertain",atEnd:"when the fast ends",varies:"The time window is approximate and varies between individuals."},
   ui:{brand:"Fasting",skip:"Skip to content",navLabel:"Main navigation",langLabel:"Language",close:"Close",prev:"Previous",next:"Next",
-    mech:"Mechanism",figs:"Key figures",mean:"What does this mean?",diagCap:"Schematic, hand-drawn style — not to scale.",
+    mech:"Mechanism",figs:"Key figures",mean:"What does this mean?",diagCap:"Schematic diagram — not to scale.",evidence:"Evidence level",
+    refeedNote:"This station explains physiology and clinical risk. It is not a guide to prolonged fasting or to managing refeeding yourself. The NICE criteria below are clinical risk criteria for professionals, not a self-assessment tool.",
     station:"Station",menuSub:"Mechanism, not rules",menuOpen:"Open menu",collapse:"Collapse menu",expand:"Expand menu",footer:"Educational explainer · MIT licence · no tracking, no cookies"},
   nav:{map:"Timeline",chart:"Fuel chart",videos:"Videos",sources:"Sources"},
   pal:{label:"Colour scheme",ember:"Ember",ketone:"Ketone",dawn:"Dawn"},
+  safety:{h:"Safety note:",p:"this page is an educational explainer, not a fasting protocol or medical advice. Prolonged fasting can be unsafe for children and adolescents, people with diabetes or on regular medication, pregnant or breastfeeding people, people with a history of eating disorders, and people with significant medical conditions."},
+  ev:{"HUMAN STUDY":"Human study","SMALL HUMAN STUDY":"Small human study","ANIMAL":"Animal study","CELL":"Cell study","REVIEW":"Review","GUIDELINE":"Guideline","TEXTBOOK ESTIMATE":"Textbook estimate","REFERENCE RANGE":"Reference range","SCHEMATIC":"Schematic"},
+  ctx:{f14h:"14-h fast",f22h:"22-h fast",f42h:"42-h fast",f5d:"5-day fast",f23d:"2–3-day fast",f56wk:"5–6-week fast",f21d:"21-day fast",f84h:"84-h fast",mice:"mice · short-term fast"},
   hero:{kicker:"Fasting physiology",h1:"What your body does when you stop eating",
     p:"No rules here. No food lists, no “fast X days, eat Y”. Just the mechanism — explained deeply enough that the conclusions become obvious on their own. The body is a physical system; this page teaches you to read it.",
     note:"Every time window is a range and varies between individuals: it depends on the last meal, physical activity, body composition, age and health."},
   map:{h:"The journey of a fast",p:"Ten stations. Select one to see the mechanism, the key figures and what follows from them."},
-  chart:{h:"Fuel chart, 0–72 h",badge:"approximate, illustrative",
+  chart:{h:"Fuel chart, 0–72 h",badge:"Conceptual model — not measured human data",
     p:"Drag the slider through the first three days. The curves are approximate and illustrative — they show direction and order, not measured values.",
-    slider:"Hours since the last meal",yAxis:"relative level",xAxis:"hours since the last meal",wm:"approximate, illustrative",
-    gantt:"Station windows (faint bar = individual variation)",focus:"In focus:",also:"Also running:",none:"—",
+    slider:"Hours since the last meal",yAxis:"relative conceptual level",xAxis:"hours since the last meal",wm:"conceptual model",
+    gantt:"Station windows (legend below the chart)",
+    bars:{rep:"strong bar = typical window (the one in the label)",onset:"faint bar = wider reported range, individual variation",unc:"dashed outline = timing in humans uncertain",cont:"continues beyond 72 h",anc:"circle = hand-chosen point of the conceptual curve"},focus:"In focus:",also:"Also running:",none:"—",
     aria:"Illustrative chart of blood glucose, insulin, glucagon, free fatty acids, ketone bodies and liver glycogen from 0 to 72 hours."},
   cv:{glu:"Blood glucose",ins:"Insulin",gcg:"Glucagon",ffa:"Free fatty acids",ket:"Ketone bodies",gly:"Liver glycogen"},
   lv:["very low","low","moderate","high","very high"],
@@ -805,32 +872,32 @@ en:{
     fastGlu:"Normal fasting blood glucose range",
     liverGly:"Liver glycogen in an adult (rough textbook estimate; varies widely)",
     muscleGly:"Muscle glycogen, whole body (rough textbook estimate; depends on muscle mass and training)",
-    gng14:"Share of the liver’s glucose output that comes from gluconeogenesis after a 14-hour fast (Landau 1996; small study)",
-    gng22:"The same share after 22 hours (same study)",
-    gng42:"The same share after 42 hours — by then almost all glucose production (same study)",
-    glu5d:"Blood glucose on day 1 and day 5 of a fast — lower, but still regulated (Ho 1988; 6 men)",
-    switchWin:"Typical window of the metabolic switch; depends on starting liver glycogen and physical activity (Anton 2018)",
-    ffa5d:"Plasma free fatty acids on day 1 and day 5 of a fast (Ho 1988)",
-    acac5d:"Rise in blood acetoacetate (a ketone body) between day 1 and day 5 of a fast (Ho 1988)",
-    brainBhb:"Beta-hydroxybutyrate in the brain, measured by MR spectroscopy: fed and after a 3-day fast (Pan 2000; small study)",
-    brainWeeks:"Fasting duration after which ketone bodies had replaced glucose as the brain’s predominant fuel (Owen 1967; 3 patients)",
-    aaEnergy:"Share of energy from amino-acid oxidation at the end of a 21-day fast (Owen 1998; 5 participants)",
-    alanine:"Plasma alanine — the main glucose-forming amino acid — falls, so the liver takes up less of it and protein breakdown is minimised (Felig 1969)",
-    mouseAuto:"Autophagosomes in mouse neurons increased markedly after short-term fasting — not directly transferable to humans (Alirezaei 2010)",
+    gng14:"Share of the liver’s glucose output that comes from gluconeogenesis after a 14-hour fast",
+    gng22:"The same share after 22 hours",
+    gng42:"The same share after 42 hours — by then almost all glucose production",
+    glu5d:"Blood glucose on day 1 and day 5 of a fast — lower, but still regulated",
+    switchWin:"Typical window of the metabolic switch; depends on starting liver glycogen and physical activity",
+    ffa5d:"Plasma free fatty acids on day 1 and day 5 of a fast",
+    acac5d:"Rise in blood acetoacetate (a ketone body) between day 1 and day 5 of a fast",
+    brainBhb:"Beta-hydroxybutyrate in the brain, measured by MR spectroscopy: fed and after a 3-day fast",
+    brainWeeks:"Fasting duration after which ketone bodies had replaced glucose as the brain’s predominant fuel",
+    aaEnergy:"Share of energy from amino-acid oxidation at the end of a 21-day fast",
+    alanine:"Plasma alanine — the main glucose-forming amino acid — falls, so the liver takes up less of it and protein breakdown is minimised",
+    mouseAuto:"Autophagosomes in mouse neurons increased markedly after short-term fasting — not directly transferable to humans",
     humanAuto:"Validated whole-body measure in living humans",
-    ghFold:"24-hour growth hormone level on day 5 of a fast compared with a fed day (Ho 1988)",
-    noraFold:"Change in serum noradrenaline between day 1 and day 4 of a fast (Zauner 2000; 11 participants)",
-    reeUp:"Change in resting energy expenditure between day 1 and day 3 of a fast (Zauner 2000)",
+    ghFold:"24-hour growth hormone level on day 5 of a fast compared with a fed day",
+    noraFold:"Change in serum noradrenaline between day 1 and day 4 of a fast",
+    reeUp:"Change in resting energy expenditure between day 1 and day 3 of a fast",
     serumNa:"Normal serum sodium range",
     serumK:"Normal serum potassium range",
     serumP:"Normal serum phosphate range (adult; lab ranges vary)",
-    nice10:"Little or no food intake for longer than this is on its own a high refeeding risk (NICE CG32)",
-    nice5:"Little or no intake for longer than this is a high risk when one other risk factor is also present (NICE CG32)"},
+    nice10:"Clinical risk criterion (not a self-assessment tool): little or no food intake for longer than this is on its own a high refeeding risk",
+    nice5:"Clinical risk criterion (not a self-assessment tool): little or no intake for longer than this is a high risk when one other risk factor is also present"},
   dl:{gut:"Gut",blood:"Blood",liver:"Liver",muscle:"Muscle",fat:"Fat tissue",pancreas:"Pancreas",brain:"Brain",rbc:"Red blood cells",kidney:"Kidney",
     cells:"Cells",food:"Food",pituitary:"Pituitary",symp:"Sympathetic n.s.",glyWaterNode:"Glycogen + water",
     glucose:"glucose",insulinUp:"insulin ↑",insulinDown:"insulin ↓",glucagonUp:"glucagon ↑",toGlycogen:"→ glycogen",toFat:"→ fat",
-    lipoBlocked:"lipolysis blocked",ownGly:"uses its own glycogen",ffa:"fatty acids",glycogenLow:"glycogen running low",glycerol:"glycerol",
-    lactate:"lactate (Cori)",aa:"amino acids",faNot:"fatty acid → glucose: not possible",ketones:"ketones",bho:"β-oxidation → acetyl-CoA",
+    lipoBlocked:"lipolysis suppressed",ownGly:"uses its own glycogen",ffa:"fatty acids",glycogenLow:"glycogen running low",glycerol:"glycerol",
+    lactate:"lactate (Cori)",aa:"amino acids",faNot:"fatty acid → glucose: no net conversion",ketones:"ketones",bho:"β-oxidation → acetyl-CoA",
     noUse:"cannot use ketones itself",insBrake:"insulin = brake",mix:"Brain fuel mix (schematic)",fedBar:"fed",
     weeksBar:"weeks of fasting",glucoseShort:"glucose",ketShort:"ketones",lessAA:"fewer amino acids",lessGlu:"less glucose needed",
     spared:"protein spared",cell:"Cell",autophagosome:"autophagosome",lysosome:"lysosome",blocks:"building blocks reused",
@@ -839,12 +906,12 @@ en:{
   st:{
     fed:{name:"Fed state",sh:"Fed state",lead:"Glucose floods in, insulin rises, the body stores.",
       mech:["Carbohydrates are broken down to glucose in the gut and absorbed into the blood. The rise in blood glucose triggers the beta cells of the pancreas to release insulin.",
-        "Insulin is the storage signal. It lets muscle and fat cells take up glucose, tells the liver and muscles to build glycogen, promotes fat storage in adipose tissue — and at the same time blocks fat release (lipolysis) and ketone production.",
+        "Insulin is the storage signal. It lets muscle and fat cells take up glucose, tells the liver and muscles to build glycogen, promotes fat storage in adipose tissue — and at the same time suppresses fat release (lipolysis) and ketone production.",
         "Glycogen capacity is limited. Once it is topped up, surplus energy is stored mainly as fat — the body’s large, energy-dense reserve."],
-      mean:"While insulin is high, the body is in storage mode and fat stores are effectively locked. Fat cannot be released in any meaningful amount until insulin comes down — so the first hours after a meal are about storing, not about burning reserves."},
+      mean:"While insulin is high, the body is in storage mode: high insulin suppresses lipolysis and promotes storage, so net release of stored fatty acids is reduced. This reverses as insulin comes down — so the first hours after a meal are about storing, not about burning reserves."},
     postabs:{name:"Post-absorptive state",sh:"Post-absorptive",lead:"The gut is empty; the liver takes over the glucose supply.",
       mech:["When absorption ends, blood glucose drifts back towards baseline. Insulin falls and the alpha cells of the pancreas release more glucagon.",
-        "Glucagon acts mainly on the liver: it breaks down liver glycogen (glycogenolysis) and releases glucose into the blood. Only the liver (and to a small extent the kidney) can do this, because only they have the enzyme glucose-6-phosphatase. Muscle glycogen stays in the muscle and is used there.",
+        "Glucagon acts mainly on the liver: it breaks down liver glycogen (glycogenolysis) and releases glucose into the blood. Mainly the liver can do this (the kidney contributes too), because these organs have the enzyme glucose-6-phosphatase, which muscle lacks. Muscle glycogen stays in the muscle and is used there.",
         "In parallel, the liver starts making new glucose (gluconeogenesis), and with lower insulin, fat cells begin releasing some fatty acids."],
       mean:"Blood glucose stays stable without food because the liver is releasing its store. That store is small, which is why this phase cannot last indefinitely — and why the next shift is inevitable, not optional."},
     switch:{name:"The metabolic switch",sh:"Metabolic switch",lead:"Liver glycogen runs low; fat becomes the main fuel.",
@@ -860,7 +927,7 @@ en:{
     keto:{name:"Ketogenesis",sh:"Ketogenesis",lead:"The liver turns fatty acids into a water-soluble fuel.",
       mech:["Large amounts of fatty acids reach the liver. In liver mitochondria they are broken down by beta-oxidation to acetyl-CoA. With low insulin and high glucagon, the excess acetyl-CoA is converted into ketone bodies: acetoacetate and beta-hydroxybutyrate (a small part of the acetoacetate becomes acetone, which is exhaled).",
         "Ketone bodies dissolve in blood, pass easily into tissues and can be burned in mitochondria much like fatty acids. The liver itself cannot use them — it lacks the enzyme needed — so it exports them.",
-        "Insulin brakes this process. With a normally working pancreas some insulin always remains, which keeps ketone levels within a limited range. In diabetic ketoacidosis insulin is critically lacking, the brake fails, and ketones and glucose rise to dangerous levels — a different state."],
+        "Insulin brakes this process. With a normally working pancreas some insulin still remains, which keeps ketone levels within a limited range. In diabetic ketoacidosis insulin is critically lacking, the brake fails, and ketones and glucose rise to dangerous levels — a different state."],
       mean:"With ketone bodies the liver “packages” fat for tissues that cannot use fat well directly. Their level rises gradually over days, which is why their effects grow with time rather than appearing at a fixed hour."},
     brain:{name:"The brain on ketones",sh:"Brain on ketones",lead:"The brain gradually shifts part of its fuel from glucose to ketones.",
       mech:["In the fed state the brain runs almost entirely on glucose. Free fatty acids barely cross the blood–brain barrier and are not a significant brain fuel.",
@@ -900,8 +967,13 @@ let lang=META.def,pal=META.pals[0],cur=null,t=0;const hidden=new Set();
 const X=()=>L[lang];
 
 function fmtV(v){const u=X().u;return v.replace(/(\d)\.(\d)/g,"$1"+X().dec+"$2").replace("{h}",u.h).replace("{d}",u.d).replace("{day}",u.day).replace("{wk}",u.wk)}
-function winLabel(s){const u=X().u;if(!s.lab)return s.id==="autophagy"?u.uncertain:u.atEnd;const[a,b]=s.lab;
-  if(b==null)return a>=48?"≈ "+a/24+"+ "+u.d:"≈ "+a+"+ "+u.h;return "≈ "+a+"–"+b+" "+u.h}
+/* the label always describes `representative` — the same range as the strong chart bar */
+function winLabel(s){const u=X().u;if(s.display==="uncertain")return u.uncertain;if(s.display==="atEnd"||!s.representative)return u.atEnd;const[a,b]=s.representative;
+  if(s.display==="from")return a>=48&&a%24===0?"≈ "+a/24+"+ "+u.d:"≈ "+a+"+ "+u.h;return "≈ "+a+"–"+b+" "+u.h}
+const repEnd=s=>s.representative[1]==null?META.tMax:s.representative[1];
+const continues=s=>(s.representative&&s.representative[1]==null)||s.display==="uncertain";
+const reduceMotion=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+const scrollBehavior=()=>reduceMotion()?"auto":"smooth";
 
 /* monotone cubic interpolation (Fritsch–Carlson): smooth, no overshoot */
 function mono(pts){const n=pts.length,xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),d=[],m=[];
@@ -916,7 +988,7 @@ const FN={};CURVE_KEYS.forEach(k=>FN[k]=mono(CURVES[k]));
 
 const inR=(r,v)=>r&&v>=r[0]&&v<=r[1];
 function focusIdx(h){return STATIONS.findIndex(s=>s.focus&&h>=s.focus[0]&&(h<s.focus[1]||(s.focus[1]===META.tMax&&h===META.tMax)))}
-function activeSet(h){const out=new Set();STATIONS.forEach((s,i)=>{if(s.core?inR(s.core,h):(s.id==="autophagy"&&inR(s.soft,h)))out.add(i)});return out}
+function activeSet(h){const out=new Set();STATIONS.forEach((s,i)=>{if(s.representative?(h>=s.representative[0]&&h<=repEnd(s)):(s.display==="uncertain"&&inR(s.onset,h)))out.add(i)});return out}
 function level(v){const th=META.levels;let i=0;while(i<th.length&&v>=th[i])i++;return X().lv[i]}
 
 /* ---------- controls ---------- */
@@ -946,7 +1018,7 @@ function applyCollapsed(){const x=X();layoutEl.classList.toggle("collapsed",coll
   const lab=collapsed?x.ui.expand:x.ui.collapse;collapseBtn.setAttribute("aria-label",lab);collapseBtn.title=lab}
 function goTo(key){
   if(key.startsWith("st-"))openStation(+key.slice(3),true);
-  else{document.getElementById(key).scrollIntoView({behavior:"smooth",block:"start"});markMenu(key)}
+  else{document.getElementById(key).scrollIntoView({behavior:scrollBehavior(),block:"start"});markMenu(key)}
   if(isMobile())closeMenu();
 }
 
@@ -971,9 +1043,9 @@ function markActive(){const f=focusIdx(t),a=activeSet(t);
   document.querySelectorAll("#chartSvg .gl").forEach(g=>{const i=+g.dataset.i;g.classList.toggle("focus",i===f);g.classList.toggle("on",a.has(i))});
 }
 function openStation(i,scroll){cur=i;renderPanel();if(cur!=null)markMenu("st-"+cur);document.querySelectorAll(".st").forEach(b=>b.setAttribute("aria-expanded",String(+b.dataset.i===cur)));
-  if(scroll&&cur!=null){const p=$("#panel");p.scrollIntoView({behavior:"smooth",block:"start"});p.focus({preventScroll:true})}}
+  if(scroll&&cur!=null){const p=$("#panel");p.scrollIntoView({behavior:scrollBehavior(),block:"start"});p.focus({preventScroll:true})}}
 
-/* ---------- diagrams (hand-drawn style) ---------- */
+/* ---------- diagrams (clean schematic: rounded rects, constant strokes, no filters) ---------- */
 function fitSize(txt,w){return Math.min(12.5,(w-10)/(txt.length*.56))}
 function diagram(id){const D=DIAGRAMS[id],dl=X().dl,C=k=>`var(--${k})`;let sh="",tx="";
   const T=(x,y,str,c,s,an)=>`<text x="${x}" y="${y}" fill="${C(c||"mut")}" font-size="${s||11}" text-anchor="${an||"middle"}" class="dt">${esc(str)}</text>`;
@@ -986,9 +1058,13 @@ function diagram(id){const D=DIAGRAMS[id],dl=X().dl,C=k=>`var(--${k})`;let sh=""
       sh+=`<path d="M${x1} ${y1} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x2} ${y2}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${it.d?' stroke-dasharray="5 5"':""}/>`;
       const tx_=x2-cx,ty_=y2-cy,tl=Math.hypot(tx_,ty_)||1,ux=tx_/tl,uy=ty_/tl,hs=6+w;
       sh+=`<path d="M${x2} ${y2} L${(x2-ux*hs-uy*hs*.55).toFixed(1)} ${(y2-uy*hs+ux*hs*.55).toFixed(1)} L${(x2-ux*hs+uy*hs*.55).toFixed(1)} ${(y2-uy*hs-ux*hs*.55).toFixed(1)} Z" fill="${col}"/>`;
-      if(it.k){const mx=.25*x1+.5*cx+.25*x2,my=.25*y1+.5*cy+.25*y2,lo=it.lo!=null?it.lo:-9;
+      if(it.k){const mx=.25*x1+.5*cx+.25*x2,my=.25*y1+.5*cy+.25*y2,lo=it.lo!=null?it.lo:-9,lab=dl[it.k];
         let lx=mx+nx*lo,ly=my+ny*lo,an="middle";if(Math.abs(nx)>.7){an=nx*lo>0?"start":"end"}
-        tx+=T(lx.toFixed(1),(ly+3.5).toFixed(1),dl[it.k],it.c,10.5,an)}}
+        /* lx/ly/la = fixed label position where the gap between boxes is too narrow */
+        if(it.lx!=null){lx=it.lx;ly=it.ly;an=it.la||"middle"}
+        /* horizontal arrow: shrink the label so it stays inside the gap between the boxes */
+        const fs=it.lx==null&&it.lo==null&&!b&&y1===y2?Math.min(10.5,(Math.abs(dx)-6)/(lab.length*.56)):10.5;
+        tx+=T(lx.toFixed(1),(ly+3.5).toFixed(1),lab,it.c,fs.toFixed(1),an)}}
     else if(it.t)tx+=T(it.x,it.y,dl[it.t],it.c,it.s,it.an);
     else if(it.raw)tx+=T(it.x,it.y,it.raw,it.c,it.s,it.an);
     else if(it.cell){const[cx,cy,rx,ry]=it.cell;sh+=`<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="var(--ink)" fill-opacity=".04" stroke="var(--ink)" stroke-opacity=".55" stroke-width="1.8"/>`}
@@ -998,11 +1074,11 @@ function diagram(id){const D=DIAGRAMS[id],dl=X().dl,C=k=>`var(--${k})`;let sh=""
       tx+=T(16,154,dl.fedBar,"mut",10.5,"start")+T(16,200,dl.weeksBar,"mut",10.5,"start");
       sh+=`<rect x="${bx}" y="140" width="${bw}" height="20" rx="6" fill="var(--glu)" fill-opacity=".85"/>`;
       sh+=`<rect x="${bx}" y="186" width="${bw*(1-share)}" height="20" rx="6" fill="var(--glu)" fill-opacity=".85"/><rect x="${bx+bw*(1-share)}" y="186" width="${bw*share}" height="20" rx="6" fill="var(--ket)" fill-opacity=".85"/>`;
-      tx+=`<text x="${bx+8}" y="154" fill="var(--bg)" font-size="10.5" class="dt">${esc(dl.glucoseShort)}</text>`;
-      tx+=`<text x="${bx+bw*(1-share)+8}" y="200" fill="var(--bg)" font-size="10.5" class="dt">${esc(dl.ketShort)}</text>`;
+      tx+=`<text x="${bx+8}" y="154" fill="var(--bg)" font-size="10.5" class="dt" style="stroke:none">${esc(dl.glucoseShort)}</text>`;
+      tx+=`<text x="${bx+bw*(1-share)+8}" y="200" fill="var(--bg)" font-size="10.5" class="dt" style="stroke:none">${esc(dl.ketShort)}</text>`;
       tx+=T(bx+bw,226,"Owen 1967","mut",9.5,"end")}
   }
-  return `<svg viewBox="0 0 420 250" role="img" aria-label="${esc(X().st[id].name)}"><defs><filter id="rough-${id}" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="2.6"/></filter></defs><g filter="url(#rough-${id})">${sh}</g><g font-family="Fraunces, Georgia, serif" style="paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:3px;stroke-linejoin:round">${tx}</g></svg>`;
+  return `<svg viewBox="0 0 420 250" role="img" aria-label="${esc(X().st[id].name)}"><g shape-rendering="geometricPrecision">${sh}</g><g font-family="Fraunces, Georgia, serif" style="paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:3px;stroke-linejoin:round">${tx}</g></svg>`;
 }
 
 /* ---------- panel ---------- */
@@ -1010,10 +1086,12 @@ function renderPanel(){const p=$("#panel");if(cur==null){p.hidden=true;p.innerHT
   const s=STATIONS[cur],x=X(),n=x.st[s.id];p.hidden=false;p.setAttribute("aria-labelledby","pTitle");
   p.innerHTML=`<div class="p-head"><span class="p-num mono">${x.ui.station} ${cur+1}/${STATIONS.length}</span><h3 id="pTitle">${esc(n.name)}</h3><span class="chip mono">${esc(winLabel(s))}</span><button type="button" class="x" data-act="close" aria-label="${esc(x.ui.close)}">×</button></div>
   <p class="vary">${esc(x.u.varies)}</p>
+  ${s.id==="refeed"?`<p class="rnote">${esc(x.ui.refeedNote)}</p>`:""}
   <p class="lead">${esc(n.lead)}</p>
   <div class="p-grid"><figure class="diag"><div class="scrollx">${diagram(s.id)}</div><figcaption>${esc(x.ui.diagCap)}</figcaption></figure>
   <div><h4>${esc(x.ui.mech)}</h4>${n.mech.map(m=>`<p>${esc(m)}</p>`).join("")}
-  <h4>${esc(x.ui.figs)}</h4><dl class="figs">${s.figs.map(([k,v,sid])=>`<div><dt class="mono">${esc(fmtV(v))}</dt><dd>${esc(x.fig[k])}${sid?` <a href="${SRC[sid].url}" target="_blank" rel="noopener" title="${esc(SRC[sid].txt)}">↗ ${esc(srcShort(sid))}</a>`:""}</dd></div>`).join("")}</dl></div></div>
+  <h4>${esc(x.ui.figs)}</h4><dl class="figs">${s.figs.map(f=>{const c=f.context?[f.context.n!=null?"n="+f.context.n:"",x.ctx[f.context.s]||""].filter(Boolean).join(" · "):"";
+    return `<div><dt class="mono">${esc(fmtV(f.value))}</dt><dd><span class="ev" title="${esc(x.ui.evidence)}">${esc(x.ev[f.evidence])}</span>${c?`<span class="ctx">${esc(c)}</span>`:""}<br>${esc(x.fig[f.id])}${f.source?` <a href="${SRC[f.source].url}" target="_blank" rel="noopener" title="${esc(SRC[f.source].txt)}">↗ ${esc(srcShort(f.source))}</a>`:""}</dd></div>`}).join("")}</dl></div></div>
   <div class="mean"><h4>${esc(x.ui.mean)}</h4><p>${esc(n.mean)}</p></div>
   <div class="p-nav"><button type="button" class="btn" data-act="prev"${cur===0?" disabled":""}>← ${esc(x.ui.prev)}</button><button type="button" class="btn" data-act="next"${cur===STATIONS.length-1?" disabled":""}>${esc(x.ui.next)} →</button></div>`;
 }
@@ -1029,19 +1107,23 @@ function renderChart(){const x=X(),gEnd=CH.gy0+STATIONS.length*CH.row;let s="";
   s+=`<text x="${(CH.x0+CH.x1)/2}" y="${CH.cy1+36}" text-anchor="middle">${esc(x.chart.xAxis)} (${esc(x.u.h)})</text>`;
   s+=`<text class="wm" x="${CH.x1-6}" y="${CH.cy0+14}" text-anchor="end">${esc(x.chart.wm)}</text>`;
   CURVE_KEYS.forEach(k=>s+=`<path class="cv${hidden.has(k)?" off":""}" data-k="${k}" d="${curvePath(k)}" stroke="var(--${k})"/>`);
+  /* hand-chosen anchor points of the conceptual model */
+  CURVE_KEYS.forEach(k=>CURVES[k].forEach(([h,v])=>s+=`<circle class="anc${hidden.has(k)?" off":""}" data-k="${k}" cx="${sx(h).toFixed(1)}" cy="${sy(v).toFixed(1)}" r="3.2" fill="var(--bg)" stroke="var(--${k})" stroke-width="1.8"/>`));
   s+=`<text x="10" y="${CH.gy0-10}" style="font:italic 12px Fraunces,serif;fill:var(--mut)">${esc(x.chart.gantt)}</text>`;
   STATIONS.forEach((st,i)=>{const y=CH.gy0+i*CH.row;
     s+=`<g data-i="${i}" class="grow" style="cursor:pointer"><rect x="0" y="${y}" width="${CH.W}" height="${CH.row}" fill="transparent"/>`;
     s+=`<text class="gl" data-i="${i}" x="10" y="${y+14}">${i+1}. ${esc(x.st[st.id].sh)}</text>`;
-    if(st.soft)s+=`<rect x="${sx(st.soft[0])}" y="${y+4}" width="${sx(st.soft[1])-sx(st.soft[0])}" height="12" rx="6" fill="var(--acc)" fill-opacity=".2"${st.core?"":' stroke="var(--acc)" stroke-dasharray="4 3" stroke-opacity=".8"'}/>`;
-    if(st.core)s+=`<rect x="${sx(st.core[0])}" y="${y+4}" width="${sx(st.core[1])-sx(st.core[0])}" height="12" rx="6" fill="var(--acc)" fill-opacity=".75"/>`;
-    if(st.plus)s+=`<path d="M${CH.x1+4} ${y+5} l7 5 l-7 5 z" fill="var(--acc)"/>`;
-    if(!st.soft)s+=`<text x="${CH.x1}" y="${y+14}" text-anchor="end" style="font-style:italic">→ ${esc(x.u.atEnd)}</text>`;
+    if(st.onset)s+=`<rect x="${sx(st.onset[0])}" y="${y+4}" width="${sx(st.onset[1])-sx(st.onset[0])}" height="12" rx="6" fill="var(--acc)" fill-opacity=".2"${st.representative?"":' stroke="var(--acc)" stroke-dasharray="4 3" stroke-opacity=".8"'}/>`;
+    if(st.representative)s+=`<rect x="${sx(st.representative[0])}" y="${y+4}" width="${sx(repEnd(st))-sx(st.representative[0])}" height="12" rx="6" fill="var(--acc)" fill-opacity=".75"/>`;
+    if(continues(st))s+=`<path d="M${CH.x1+4} ${y+5} l7 5 l-7 5 z" fill="var(--acc)"/>`;
+    if(!st.onset)s+=`<text x="${CH.x1}" y="${y+14}" text-anchor="end" style="font-style:italic">→ ${esc(x.u.atEnd)}</text>`;
     s+=`</g>`});
   s+=`<line id="cur" x1="0" y1="${CH.cy0-6}" x2="0" y2="${gEnd}" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/>`;
   s+=`<g id="dots">${CURVE_KEYS.map(k=>`<circle class="dot${hidden.has(k)?" off":""}" data-k="${k}" r="5.5" fill="var(--${k})" stroke="var(--bg)" stroke-width="2"/>`).join("")}</g>`;
   const svg=$("#chartSvg");svg.innerHTML=s;svg.setAttribute("aria-label",x.chart.aria);
 }
+function renderBarLegend(){const b=X().chart.bars;
+  $("#barLegend").innerHTML=`<span><i aria-hidden="true"></i>${esc(b.rep)}</span><span><i class="soft" aria-hidden="true"></i>${esc(b.onset)}</span><span><i class="dash" aria-hidden="true"></i>${esc(b.unc)}</span><span><b aria-hidden="true" style="color:var(--acc)">▸</b>${esc(b.cont)}</span><span><i class="anc" aria-hidden="true"></i>${esc(b.anc)}</span>`}
 function renderLegend(){$("#legend").innerHTML=CURVE_KEYS.map(k=>`<button type="button" class="lg" data-k="${k}" aria-pressed="${!hidden.has(k)}"><span class="ln" style="background:var(--${k})"></span>${esc(X().cv[k])}<span class="lv" data-lv="${k}"></span></button>`).join("")}
 
 function update(){const x=X(),cx=sx(t);
@@ -1064,7 +1146,7 @@ function renderAll(){const x=X();document.documentElement.lang=lang;document.tit
   document.querySelectorAll("[data-t]").forEach(e=>{const v=get(x,e.dataset.t);if(v!=null)e.textContent=v});
   document.querySelectorAll("[data-ta]").forEach(e=>{const v=get(x,e.dataset.ta);if(v!=null)e.setAttribute("aria-label",v)});
   menuBtn.setAttribute("aria-label",x.ui.menuOpen);
-  renderControls();buildMenu();applyCollapsed();renderStations();renderPanel();renderChart();renderLegend();renderSources();buildVideos();update();
+  renderControls();buildMenu();applyCollapsed();renderStations();renderPanel();renderChart();renderBarLegend();renderLegend();renderSources();buildVideos();update();
 }
 
 /* ---------- events ---------- */
