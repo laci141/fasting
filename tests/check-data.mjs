@@ -120,9 +120,10 @@ const paths = (o, p = "", out = []) => {
 {
   const errs = [], re = /^[A-Za-z0-9_-]{11}$/;
   if (D.VIDEOS.length !== 16) errs.push(`expected 16 slots, found ${D.VIDEOS.length}`);
+  D.VIDEOS.forEach((v, i) => { if (!v.id) errs.push(`slot ${i + 1}: empty id (all 16 must be filled)`); });
   D.VIDEOS.forEach((v, i) => { if (v.id && !re.test(v.id)) errs.push(`slot ${i + 1}: bad id "${v.id}"`); });
   const filled = D.VIDEOS.filter(v => v.id).length;
-  check(`videos: exactly 16 slots (${filled} filled), ids match ^[A-Za-z0-9_-]{11}$`, errs);
+  check(`videos: exactly 16 slots, all filled (${filled}/16), ids match ^[A-Za-z0-9_-]{11}$`, errs);
 }
 
 /* 6. diagram label keys exist in every language */
