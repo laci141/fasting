@@ -15,17 +15,15 @@
 :root,:root[data-pal="ember"]{
   --bg:#16100c;--bg2:#221710;--ink:#f6ede4;--mut:#cbb9a9;--acc:#f5a524;--acc2:#e0703a;
   --g1:rgba(245,165,36,.26);--g2:rgba(214,98,52,.24);--g3:rgba(150,40,40,.24);
-  --glu:#ffd166;--ins:#ff8a4c;--gcg:#ff6f9a;--ffa:#b9e07a;--ket:#5ee0c8;--gly:#c4a0ff;
+  /* curve colours --glu … --gly are set from CURVE_STYLE in the script (identical in every palette) */
 }
 :root[data-pal="ketone"]{
   --bg:#12100f;--bg2:#1b1719;--ink:#f1eee9;--mut:#bdb6b0;--acc:#2dd4bf;--acc2:#818cf8;
   --g1:rgba(45,212,191,.22);--g2:rgba(99,102,241,.28);--g3:rgba(168,85,247,.2);
-  --glu:#fcd34d;--ins:#fb923c;--gcg:#f472b6;--ffa:#a3e635;--ket:#2dd4bf;--gly:#a5b4fc;
 }
 :root[data-pal="dawn"]{
   --bg:#1a1214;--bg2:#251a1d;--ink:#fbf1ec;--mut:#d3bfb9;--acc:#f9c77a;--acc2:#f49ab3;
   --g1:rgba(249,199,122,.24);--g2:rgba(244,114,182,.24);--g3:rgba(251,146,60,.18);
-  --glu:#fde68a;--ins:#fdba74;--gcg:#fb7185;--ffa:#d9f99d;--ket:#99f6e4;--gly:#e9d5ff;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
@@ -182,32 +180,57 @@ main .hero{padding-top:0}
 
 /* ---------- chart ---------- */
 .chart-top{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:baseline}
+.expand-btn{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:.45rem;padding:.4rem .9rem}
+.expand-btn .ico{font-size:1.05rem;line-height:1}
 .badge{font:500 .75rem "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.08em;color:var(--bg);background:var(--acc);border-radius:999px;padding:.2rem .7rem}
 .slider-row{display:grid;grid-template-columns:auto 1fr auto;gap:.8rem;align-items:center;margin:1rem 0}
 .slider-row label{font-size:.9rem;color:var(--mut)}
 .slider-row output{min-width:5.5rem;text-align:right;font-size:1.1rem;color:var(--acc)}
 @media (max-width:600px){.slider-row{grid-template-columns:1fr auto}.slider-row label{grid-column:1/-1}}
 input[type=range]{width:100%;accent-color:var(--acc);height:36px;cursor:pointer}
-#chartSvg{display:block;width:100%;min-width:640px;height:auto}
-#chartSvg .cv{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s}
-#chartSvg .cv.off,#chartSvg .dot.off,#chartSvg .anc.off{opacity:0}
+.slider-row.zoom{margin:.4rem 0 .2rem}
+.chart-box{width:100%}
+.csvg{display:block;width:100%;height:auto;touch-action:pan-y}
+.csvg .cv{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s}
+.csvg .cv.off,.csvg .dot.off,.csvg .anc.off{opacity:0}
 .bar-legend{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;margin-top:.6rem;font-size:.82rem;color:var(--mut)}
 .bar-legend span{display:inline-flex;align-items:center;gap:.4rem}
 .bar-legend i{display:inline-block;width:26px;height:10px;border-radius:5px;background:var(--acc)}
 .bar-legend i.soft{opacity:.35}
 .bar-legend i.dash{background:none;border:1px dashed var(--acc)}
 .bar-legend i.anc{width:10px;height:10px;border-radius:50%;background:var(--bg);border:2px solid var(--ink)}
-#chartSvg .grid{stroke:rgba(255,255,255,.08)}
-#chartSvg text{fill:var(--mut);font:11px "IBM Plex Mono",monospace}
-#chartSvg .gl{font:12px system-ui,sans-serif;fill:var(--mut);cursor:pointer}
-#chartSvg .gl.on{fill:var(--ink)}
-#chartSvg .gl.focus{fill:var(--acc);font-weight:700}
-#chartSvg .wm{font:italic 13px "Fraunces",serif;fill:var(--mut)}
-.legend{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
-.lg{display:flex;align-items:center;gap:.45rem;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:.35rem .8rem;color:var(--ink);font:inherit;font-size:.88rem;cursor:pointer;min-height:36px}
-.lg[aria-pressed="false"]{opacity:.45}
-.lg .ln{width:18px;height:4px;border-radius:2px}
-.lg .lv{font:500 .75rem "IBM Plex Mono",monospace;color:var(--mut)}
+.csvg .grid{stroke:rgba(255,255,255,.08)}
+.csvg text{fill:var(--mut);font:11px "IBM Plex Mono",monospace}
+.csvg .gl{font:12px system-ui,sans-serif;fill:var(--mut);cursor:pointer}
+.csvg .gl.on{fill:var(--ink)}
+.csvg .gl.focus{fill:var(--acc);font-weight:700}
+.csvg .wm{font:italic 13px "Fraunces",serif;fill:var(--mut)}
+/* curve toggles: 2 rows × 3 (2 columns on narrow screens) */
+.cv-toggles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;margin:.6rem 0 1.2rem}
+@media (max-width:480px){.cv-toggles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cvt{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:.65rem;row-gap:.1rem;align-items:center;text-align:left;
+  background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:.45rem .6rem;color:var(--ink);font:inherit;font-size:.88rem;cursor:pointer;min-height:44px}
+.cvt:hover{border-color:rgba(255,255,255,.3)}
+.cvt .cb{grid-row:span 2;width:18px;height:18px;border-radius:5px;border:2px solid var(--mut);display:grid;place-items:center;font-size:.75rem;line-height:1;color:var(--bg)}
+.cvt[aria-pressed="true"] .cb{background:var(--ink);border-color:var(--ink)}
+.cvt .smp{grid-row:span 2;width:30px;height:10px;overflow:visible}
+.cvt .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cvt .lv{grid-column:3;font:500 .72rem "IBM Plex Mono",monospace;color:var(--mut)}
+/* narrow: name gets the full first row (may wrap), line sample + level go to the second row */
+@media (max-width:480px){
+  .cvt{grid-template-columns:auto auto minmax(0,1fr);row-gap:.15rem}
+  .cvt .cb{grid-row:1}
+  .cvt .nm{grid-column:2/-1;grid-row:1;white-space:normal;line-height:1.25}
+  .cvt .smp{grid-column:2;grid-row:2}
+  .cvt .lv{grid-row:2}
+}
+.cvt[aria-pressed="false"]{opacity:.5}
+.cvt[aria-pressed="false"] .nm{text-decoration:line-through}
+/* expanded chart: real fullscreen, or the fallback overlay when the Fullscreen API is missing/refused */
+#chartPanel.is-full{position:fixed;inset:0;z-index:60;margin:0;border-radius:0;overflow:auto;max-height:100vh;
+  background:radial-gradient(circle at 12% 18%,var(--g1),transparent 42%),radial-gradient(circle at 88% 30%,var(--g2),transparent 44%),linear-gradient(160deg,var(--bg) 0%,var(--bg2) 100%)}
+body.chart-expanded{overflow:hidden}
+body.chart-expanded .menu,body.chart-expanded #menuBtn,body.chart-expanded .backdrop{display:none}
 .focus-box{margin-top:1rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center;font-size:.92rem}
 .focus-box .lbl{color:var(--mut)}
 .focus-box .btn{padding:.3rem .8rem;min-height:34px}
@@ -279,17 +302,24 @@ footer{padding:1.5rem 16px 2.5rem;text-align:center;color:var(--mut);font-size:.
   </section>
 
   <section class="wrap sec" id="chart">
-    <div class="glass">
-      <div class="chart-top"><h2 data-t="chart.h"></h2><span class="badge" data-t="chart.badge"></span></div>
+    <div class="glass" id="chartPanel">
+      <div class="chart-top"><h2 data-t="chart.h"></h2><span class="badge" data-t="chart.badge"></span>
+        <button type="button" class="btn expand-btn" id="expandBtn" aria-pressed="false"><span class="ico" aria-hidden="true">⤢</span><span class="lbl"></span></button></div>
       <p data-t="chart.p"></p>
+      <div class="slider-row zoom">
+        <label for="zoom" data-t="chart.zoom"></label>
+        <input type="range" id="zoom" min="0" max="7" step="1" value="7">
+        <output id="zoomOut" class="mono" for="zoom"></output>
+      </div>
       <div class="slider-row">
         <label for="hr" data-t="chart.slider"></label>
         <input type="range" id="hr" min="0" max="72" step="1" value="0">
         <output id="hrOut" class="mono" for="hr"></output>
       </div>
-      <div class="scrollx"><svg id="chartSvg" viewBox="0 0 760 520" role="img"></svg></div>
+      <div class="chart-box" id="chartBox"><svg id="chartSvg" class="csvg" role="img"></svg></div>
+      <div class="cv-toggles" id="legend"></div>
+      <div class="chart-box gantt-box"><svg id="ganttSvg" class="csvg" role="img"></svg></div>
       <div class="bar-legend" id="barLegend"></div>
-      <div class="legend" id="legend"></div>
       <div class="focus-box" id="focusBox" aria-live="polite"></div>
     </div>
   </section>
@@ -409,9 +439,18 @@ const CURVES={
   gly:[[0,.75],[3,.95],[6,.85],[12,.6],[18,.38],[24,.22],[36,.1],[48,.07],[72,.06]]
 };
 const CURVE_KEYS=["glu","ins","gcg","ffa","ket","gly"];
-
-/* chart geometry */
-const CH={W:760,H:520,x0:180,x1:740,cy0:24,cy1:250,gy0:312,row:20};
+/* one colour + one dash pattern per curve (same in every palette; colour is never the only cue).
+   The colours are also exposed as CSS variables --glu, --ins, … and reused by the station diagrams. */
+const CURVE_STYLE={
+  glu:{color:"#eda100",dash:""},
+  ins:{color:"#3987e5",dash:"9 5"},
+  gcg:{color:"#e87ba4",dash:"1.5 5"},
+  ffa:{color:"#1baf7a",dash:"14 5 2 5"},
+  ket:{color:"#9085e9",dash:"5 3 1.5 3 1.5 3"},
+  gly:{color:"#eb6834",dash:"20 6"}
+};
+/* zoom slider: visible time window 0–N hours, 8 steps */
+const ZOOM=[1,2,4,8,12,24,36,72];
 
 /* diagram geometry (viewBox 420×250); n=node, a=arrow, t=label key, raw=literal, circ, cell, bars */
 const DIAGRAMS={
@@ -506,11 +545,11 @@ hu:{
     p:"Itt nincsenek szabályok. Nincsenek étellisták, nincs „böjtölj X napot, egyél Y‑t”. Csak a mechanizmus — olyan mélyen elmagyarázva, hogy a következtetések maguktól nyilvánvalóvá válnak. A test egy fizikai rendszer; ez az oldal megtanít olvasni benne.",
     note:"Minden időablak tartomány, és egyénenként eltér: függ az utolsó étkezéstől, a fizikai aktivitástól, a testösszetételtől, az életkortól és az egészségi állapottól."},
   map:{h:"Egy böjt útja",p:"Tíz állomás. Válassz egyet, és megnézheted a mechanizmust, a kulcsszámokat és azt, ami belőlük következik."},
-  chart:{h:"Üzemanyag-grafikon, 0–72 óra",badge:"Koncepcionális modell — nem mért emberi adat",
+  chart:{zoom:"Időablak",zoomAria:{one:"0-tól {b} óráig",many:"0-tól {b} óráig"},expand:"Nagyítás",shrink:"Kicsinyítés",h:"Üzemanyag-grafikon, 0–72 óra",badge:"Koncepcionális modell — nem mért emberi adat",
     p:"Húzd a csúszkát az első három napon át. A görbék közelítők és szemléltetők — az irányt és a sorrendet mutatják, nem mért értékeket.",
     slider:"Az utolsó étkezés óta eltelt órák",yAxis:"relatív koncepcionális szint",xAxis:"az utolsó étkezés óta eltelt órák",wm:"koncepcionális modell",
     gantt:"Az állomások időablakai (jelmagyarázat a grafikon alatt)",
-    bars:{rep:"erős sáv = jellemző időablak (ezt mutatja a címke)",onset:"halvány sáv = tágabb közölt tartomány, egyéni eltérés",unc:"szaggatott keret = emberben bizonytalan időzítés",cont:"72 órán túl is tart",anc:"kör = kézzel választott pont a koncepcionális görbén"},focus:"Fókuszban:",also:"Közben zajlik:",none:"—",
+    bars:{rep:"erős sáv = jellemző időablak (ezt mutatja a címke)",onset:"halvány sáv = tágabb közölt tartomány, egyéni eltérés",unc:"szaggatott keret = emberben bizonytalan időzítés",cont:"az időablakon túl is tart",anc:"kör = kézzel választott pont a koncepcionális görbén"},focus:"Fókuszban:",also:"Közben zajlik:",none:"—",
     aria:"Szemléltető grafikon: vércukor, inzulin, glukagon, szabad zsírsavak, ketontestek és májglikogén 0 és 72 óra között."},
   cv:{glu:"Vércukor",ins:"Inzulin",gcg:"Glukagon",ffa:"Szabad zsírsavak",ket:"Ketontestek",gly:"Májglikogén"},
   lv:["nagyon alacsony","alacsony","közepes","magas","nagyon magas"],
@@ -623,11 +662,11 @@ ro:{
     p:"Aici nu există reguli. Nicio listă de alimente, niciun „ține post X zile, mănâncă Y”. Doar mecanismul — explicat suficient de profund încât concluziile să devină evidente de la sine. Corpul este un sistem fizic; această pagină te învață să-l citești.",
     note:"Toate intervalele de timp sunt aproximative și variază de la o persoană la alta: depind de ultima masă, activitatea fizică, compoziția corporală, vârstă și starea de sănătate."},
   map:{h:"Drumul unui post",p:"Zece stații. Alege una pentru a vedea mecanismul, cifrele-cheie și ce decurge din ele."},
-  chart:{h:"Grafic de combustibil, 0–72 ore",badge:"Model conceptual — nu date măsurate la om",
+  chart:{zoom:"Interval de timp",zoomAria:{one:"de la 0 la {b} oră",many:"de la 0 la {b} ore"},expand:"Mărire",shrink:"Micșorare",h:"Grafic de combustibil, 0–72 ore",badge:"Model conceptual — nu date măsurate la om",
     p:"Trage cursorul prin primele trei zile. Curbele sunt aproximative și ilustrative — arată direcția și ordinea, nu valori măsurate.",
     slider:"Ore de la ultima masă",yAxis:"nivel conceptual relativ",xAxis:"ore de la ultima masă",wm:"model conceptual",
     gantt:"Intervalele stațiilor (legenda se află sub grafic)",
-    bars:{rep:"bandă plină = interval tipic (cel din etichetă)",onset:"bandă estompată = interval raportat mai larg, variație individuală",unc:"contur punctat = moment incert la om",cont:"continuă după 72 de ore",anc:"cerc = punct ales manual pe curba conceptuală"},focus:"În prim-plan:",also:"Au loc în paralel:",none:"—",
+    bars:{rep:"bandă plină = interval tipic (cel din etichetă)",onset:"bandă estompată = interval raportat mai larg, variație individuală",unc:"contur punctat = moment incert la om",cont:"continuă după intervalul de timp afișat",anc:"cerc = punct ales manual pe curba conceptuală"},focus:"În prim-plan:",also:"Au loc în paralel:",none:"—",
     aria:"Grafic ilustrativ: glicemie, insulină, glucagon, acizi grași liberi, corpi cetonici și glicogen hepatic între 0 și 72 de ore."},
   cv:{glu:"Glicemie",ins:"Insulină",gcg:"Glucagon",ffa:"Acizi grași liberi",ket:"Corpi cetonici",gly:"Glicogen hepatic"},
   lv:["foarte scăzut","scăzut","moderat","ridicat","foarte ridicat"],
@@ -740,11 +779,11 @@ de:{
     p:"Hier gibt es keine Regeln. Keine Lebensmittellisten, kein „faste X Tage, iss Y“. Nur der Mechanismus — so gründlich erklärt, dass sich die Schlussfolgerungen von selbst ergeben. Der Körper ist ein physikalisches System; diese Seite lehrt dich, es zu lesen.",
     note:"Alle Zeitfenster sind Spannen und unterscheiden sich von Mensch zu Mensch: Sie hängen von der letzten Mahlzeit, körperlicher Aktivität, Körperzusammensetzung, Alter und Gesundheit ab."},
   map:{h:"Der Verlauf des Fastens",p:"Zehn Stationen. Wähle eine aus, um den Mechanismus, die Kennzahlen und die Folgerungen daraus zu sehen."},
-  chart:{h:"Brennstoff-Diagramm, 0–72 Std.",badge:"Konzeptmodell — keine gemessenen Humandaten",
+  chart:{zoom:"Zeitfenster",zoomAria:{one:"0 bis {b} Stunde",many:"0 bis {b} Stunden"},expand:"Vergrößern",shrink:"Verkleinern",h:"Brennstoff-Diagramm, 0–72 Std.",badge:"Konzeptmodell — keine gemessenen Humandaten",
     p:"Ziehe den Regler durch die ersten drei Tage. Die Kurven sind ungefähr und illustrativ — sie zeigen Richtung und Reihenfolge, keine Messwerte.",
     slider:"Stunden seit der letzten Mahlzeit",yAxis:"relatives konzeptuelles Niveau",xAxis:"Stunden seit der letzten Mahlzeit",wm:"Konzeptmodell",
     gantt:"Zeitfenster der Stationen (Legende unter dem Diagramm)",
-    bars:{rep:"kräftiger Balken = typisches Zeitfenster (wie in der Beschriftung)",onset:"blasser Balken = breiterer berichteter Bereich, individuelle Schwankung",unc:"gestrichelter Rahmen = Zeitverlauf beim Menschen unsicher",cont:"setzt sich über 72 Std. hinaus fort",anc:"Kreis = von Hand gewählter Punkt der Konzeptkurve"},focus:"Im Fokus:",also:"Läuft parallel:",none:"—",
+    bars:{rep:"kräftiger Balken = typisches Zeitfenster (wie in der Beschriftung)",onset:"blasser Balken = breiterer berichteter Bereich, individuelle Schwankung",unc:"gestrichelter Rahmen = Zeitverlauf beim Menschen unsicher",cont:"setzt sich über das Zeitfenster hinaus fort",anc:"Kreis = von Hand gewählter Punkt der Konzeptkurve"},focus:"Im Fokus:",also:"Läuft parallel:",none:"—",
     aria:"Illustratives Diagramm: Blutzucker, Insulin, Glukagon, freie Fettsäuren, Ketonkörper und Leberglykogen zwischen 0 und 72 Stunden."},
   cv:{glu:"Blutzucker",ins:"Insulin",gcg:"Glukagon",ffa:"Freie Fettsäuren",ket:"Ketonkörper",gly:"Leberglykogen"},
   lv:["sehr niedrig","niedrig","mittel","hoch","sehr hoch"],
@@ -857,11 +896,11 @@ en:{
     p:"No rules here. No food lists, no “fast X days, eat Y”. Just the mechanism — explained deeply enough that the conclusions become obvious on their own. The body is a physical system; this page teaches you to read it.",
     note:"Every time window is a range and varies between individuals: it depends on the last meal, physical activity, body composition, age and health."},
   map:{h:"The journey of a fast",p:"Ten stations. Select one to see the mechanism, the key figures and what follows from them."},
-  chart:{h:"Fuel chart, 0–72 h",badge:"Conceptual model — not measured human data",
+  chart:{zoom:"Time window",zoomAria:{one:"0 to {b} hour",many:"0 to {b} hours"},expand:"Expand",shrink:"Collapse",h:"Fuel chart, 0–72 h",badge:"Conceptual model — not measured human data",
     p:"Drag the slider through the first three days. The curves are approximate and illustrative — they show direction and order, not measured values.",
     slider:"Hours since the last meal",yAxis:"relative conceptual level",xAxis:"hours since the last meal",wm:"conceptual model",
     gantt:"Station windows (legend below the chart)",
-    bars:{rep:"strong bar = typical window (the one in the label)",onset:"faint bar = wider reported range, individual variation",unc:"dashed outline = timing in humans uncertain",cont:"continues beyond 72 h",anc:"circle = hand-chosen point of the conceptual curve"},focus:"In focus:",also:"Also running:",none:"—",
+    bars:{rep:"strong bar = typical window (the one in the label)",onset:"faint bar = wider reported range, individual variation",unc:"dashed outline = timing in humans uncertain",cont:"continues beyond the time window",anc:"circle = hand-chosen point of the conceptual curve"},focus:"In focus:",also:"Also running:",none:"—",
     aria:"Illustrative chart of blood glucose, insulin, glucagon, free fatty acids, ketone bodies and liver glycogen from 0 to 72 hours."},
   cv:{glu:"Blood glucose",ins:"Insulin",gcg:"Glucagon",ffa:"Free fatty acids",ket:"Ketone bodies",gly:"Liver glycogen"},
   lv:["very low","low","moderate","high","very high"],
@@ -1040,7 +1079,7 @@ function renderStations(){
 }
 function markActive(){const f=focusIdx(t),a=activeSet(t);
   document.querySelectorAll(".st").forEach(b=>{const i=+b.dataset.i;b.classList.toggle("focus",i===f);b.classList.toggle("on",a.has(i)&&i!==f)});
-  document.querySelectorAll("#chartSvg .gl").forEach(g=>{const i=+g.dataset.i;g.classList.toggle("focus",i===f);g.classList.toggle("on",a.has(i))});
+  document.querySelectorAll("#ganttSvg .gl").forEach(g=>{const i=+g.dataset.i;g.classList.toggle("focus",i===f);g.classList.toggle("on",a.has(i))});
 }
 function openStation(i,scroll){cur=i;renderPanel();if(cur!=null)markMenu("st-"+cur);document.querySelectorAll(".st").forEach(b=>b.setAttribute("aria-expanded",String(+b.dataset.i===cur)));
   if(scroll&&cur!=null){const p=$("#panel");p.scrollIntoView({behavior:scrollBehavior(),block:"start"});p.focus({preventScroll:true})}}
@@ -1101,44 +1140,98 @@ function renderPanel(){const p=$("#panel");if(cur==null){p.hidden=true;p.innerHT
 }
 
 /* ---------- chart ---------- */
-const sx=h=>CH.x0+(CH.x1-CH.x0)*h/META.tMax, sy=v=>CH.cy1-(CH.cy1-CH.cy0)*v;
-function curvePath(k){let d="";for(let h=0;h<=META.tMax;h+=.5)d+=(h?"L":"M")+sx(h).toFixed(1)+" "+sy(FN[k](h)).toFixed(1);return d}
-function renderChart(){const x=X(),gEnd=CH.gy0+STATIONS.length*CH.row;let s="";
-  for(let h=0;h<=72;h+=12)s+=`<line class="grid" x1="${sx(h)}" y1="${CH.cy0}" x2="${sx(h)}" y2="${gEnd}"/><text x="${sx(h)}" y="${CH.cy1+18}" text-anchor="middle">${h}</text>`;
+/* The SVG viewBox is set to the rendered pixel size of #chartBox (re-rendered on resize), so text stays
+   legible at any width and the plot starts at the left edge of the panel. Curves and station bars share sx(). */
+let zi=ZOOM.length-1,full=false,expanded=false,CH=null;
+const win=()=>ZOOM[zi];
+function layoutChart(){const W=Math.max(280,Math.round($("#chartBox").clientWidth||760));
+  const ph=full?Math.min(560,Math.max(280,Math.round(innerHeight*.5))):Math.min(300,Math.max(210,Math.round(W*.4)));
+  const cy0=24,cy1=cy0+ph,gy0=26,row=30;
+  CH={W,x0:30,x1:W-18,cy0,cy1,H:cy1+44,gy0,row,GH:gy0+STATIONS.length*row+6}}
+const sx=h=>CH.x0+(CH.x1-CH.x0)*h/win(), sy=v=>CH.cy1-(CH.cy1-CH.cy0)*v;
+const fmtN=v=>String(+(+v).toFixed(2)).replace(".",X().dec);
+const fitFs=(txt,max,avail,cw)=>Math.min(max,avail/(String(txt).length*(cw||.62))).toFixed(1);
+/* tick step giving ~5 intervals (~6 ticks); ties keep the smaller step */
+function tickStep(w){const c=[.1,.2,.25,.5,1,2,3,4,6,12];return c.reduce((a,b)=>Math.abs(w/b-5)<Math.abs(w/a-5)?b:a)}
+const tStep=()=>win()<=4?.05:1;
+const snapT=h=>Math.min(win(),Math.max(0,+(Math.round(h/tStep())*tStep()).toFixed(2)));
+function curvePath(k){const w=win(),n=240;let d="";for(let i=0;i<=n;i++){const h=w*i/n;d+=(i?"L":"M")+sx(h).toFixed(1)+" "+sy(FN[k](h)).toFixed(1)}return d}
+function renderChart(){layoutChart();const x=X(),w=win(),step=tickStep(w),pw=CH.x1-CH.x0,gEnd=CH.gy0+STATIONS.length*CH.row;let s="",g="";
+  const ticks=[];for(let i=0;i*step<=w+1e-9;i++)ticks.push(+(i*step).toFixed(2));
+  /* --- curve plot (#chartSvg) --- */
+  s+=`<defs><clipPath id="plotClip"><rect x="${CH.x0-6}" y="${CH.cy0-10}" width="${pw+12}" height="${CH.cy1-CH.cy0+20}"/></clipPath></defs>`;
+  ticks.forEach(h=>s+=`<line class="grid" x1="${sx(h)}" y1="${CH.cy0}" x2="${sx(h)}" y2="${CH.cy1}"/><text x="${sx(h)}" y="${CH.cy1+16}" text-anchor="middle">${fmtN(h)}</text>`);
   [.25,.5,.75,1].forEach(v=>s+=`<line class="grid" x1="${CH.x0}" y1="${sy(v)}" x2="${CH.x1}" y2="${sy(v)}"/>`);
   s+=`<line x1="${CH.x0}" y1="${CH.cy1}" x2="${CH.x1}" y2="${CH.cy1}" stroke="rgba(255,255,255,.3)"/>`;
-  s+=`<text x="${CH.x0-14}" y="${(CH.cy0+CH.cy1)/2}" text-anchor="middle" transform="rotate(-90 ${CH.x0-14} ${(CH.cy0+CH.cy1)/2})">${esc(x.chart.yAxis)}</text>`;
-  s+=`<text x="${(CH.x0+CH.x1)/2}" y="${CH.cy1+36}" text-anchor="middle">${esc(x.chart.xAxis)} (${esc(x.u.h)})</text>`;
+  const ym=(CH.cy0+CH.cy1)/2;
+  s+=`<text x="12" y="${ym}" text-anchor="middle" style="font-size:${fitFs(x.chart.yAxis,11,CH.cy1-CH.cy0-6)}px" transform="rotate(-90 12 ${ym})">${esc(x.chart.yAxis)}</text>`;
+  const xt=`${x.chart.xAxis} (${x.u.h})`;
+  s+=`<text x="${(CH.x0+CH.x1)/2}" y="${CH.cy1+34}" text-anchor="middle" style="font-size:${fitFs(xt,11,pw)}px">${esc(xt)}</text>`;
   s+=`<text class="wm" x="${CH.x1-6}" y="${CH.cy0+14}" text-anchor="end">${esc(x.chart.wm)}</text>`;
-  CURVE_KEYS.forEach(k=>s+=`<path class="cv${hidden.has(k)?" off":""}" data-k="${k}" d="${curvePath(k)}" stroke="var(--${k})"/>`);
+  s+=`<g clip-path="url(#plotClip)">`;
+  CURVE_KEYS.forEach(k=>s+=`<path class="cv${hidden.has(k)?" off":""}" data-k="${k}" d="${curvePath(k)}" stroke="var(--${k})"${CURVE_STYLE[k].dash?` stroke-dasharray="${CURVE_STYLE[k].dash}"`:""}/>`);
   /* hand-chosen anchor points of the conceptual model */
-  CURVE_KEYS.forEach(k=>CURVES[k].forEach(([h,v])=>s+=`<circle class="anc${hidden.has(k)?" off":""}" data-k="${k}" cx="${sx(h).toFixed(1)}" cy="${sy(v).toFixed(1)}" r="3.2" fill="var(--bg)" stroke="var(--${k})" stroke-width="1.8"/>`));
-  s+=`<text x="10" y="${CH.gy0-10}" style="font:italic 12px Fraunces,serif;fill:var(--mut)">${esc(x.chart.gantt)}</text>`;
-  STATIONS.forEach((st,i)=>{const y=CH.gy0+i*CH.row;
-    s+=`<g data-i="${i}" class="grow" style="cursor:pointer"><rect x="0" y="${y}" width="${CH.W}" height="${CH.row}" fill="transparent"/>`;
-    s+=`<text class="gl" data-i="${i}" x="10" y="${y+14}">${i+1}. ${esc(x.st[st.id].sh)}</text>`;
-    if(st.onset)s+=`<rect x="${sx(st.onset[0])}" y="${y+4}" width="${sx(st.onset[1])-sx(st.onset[0])}" height="12" rx="6" fill="var(--acc)" fill-opacity=".2"${st.representative?"":' stroke="var(--acc)" stroke-dasharray="4 3" stroke-opacity=".8"'}/>`;
-    if(st.representative)s+=`<rect x="${sx(st.representative[0])}" y="${y+4}" width="${sx(repEnd(st))-sx(st.representative[0])}" height="12" rx="6" fill="var(--acc)" fill-opacity=".75"/>`;
-    if(continues(st))s+=`<path d="M${CH.x1+4} ${y+5} l7 5 l-7 5 z" fill="var(--acc)"/>`;
-    if(!st.onset)s+=`<text x="${CH.x1}" y="${y+14}" text-anchor="end" style="font-style:italic">→ ${esc(x.u.atEnd)}</text>`;
-    s+=`</g>`});
-  s+=`<line id="cur" x1="0" y1="${CH.cy0-6}" x2="0" y2="${gEnd}" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+  CURVE_KEYS.forEach(k=>CURVES[k].filter(([h])=>h<=w).forEach(([h,v])=>s+=`<circle class="anc${hidden.has(k)?" off":""}" data-k="${k}" cx="${sx(h).toFixed(1)}" cy="${sy(v).toFixed(1)}" r="3.2" fill="var(--bg)" stroke="var(--${k})" stroke-width="1.8"/>`));
+  s+=`</g>`;
+  s+=`<line id="cur" x1="0" y1="${CH.cy0-6}" x2="0" y2="${CH.cy1+4}" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/>`;
   s+=`<g id="dots">${CURVE_KEYS.map(k=>`<circle class="dot${hidden.has(k)?" off":""}" data-k="${k}" r="5.5" fill="var(--${k})" stroke="var(--bg)" stroke-width="2"/>`).join("")}</g>`;
-  const svg=$("#chartSvg");svg.innerHTML=s;svg.setAttribute("aria-label",x.chart.aria);
+  /* --- station window bars (#ganttSvg): same width and x-scale; clipped to the window, ▸ when a bar runs past its end --- */
+  ticks.forEach(h=>g+=`<line class="grid" x1="${sx(h)}" y1="${CH.gy0-4}" x2="${sx(h)}" y2="${gEnd}"/>`);
+  g+=`<text x="${CH.x0}" y="${CH.gy0-12}" style="font:italic ${fitFs(x.chart.gantt,12,CH.W-CH.x0-4,.5)}px Fraunces,serif;fill:var(--mut)">${esc(x.chart.gantt)}</text>`;
+  const clip=r=>r[0]>=w?null:[Math.max(r[0],0),Math.min(r[1],w)];
+  STATIONS.forEach((st,i)=>{const y=CH.gy0+i*CH.row,by=y+15;
+    g+=`<g data-i="${i}" class="grow" style="cursor:pointer"><rect x="0" y="${y}" width="${CH.W}" height="${CH.row}" fill="transparent"/>`;
+    g+=`<text class="gl" data-i="${i}" x="${CH.x0}" y="${y+11}">${i+1}. ${esc(x.st[st.id].sh)}</text>`;
+    const on=st.onset&&clip(st.onset),rp=st.representative&&clip([st.representative[0],repEnd(st)]);
+    if(on)g+=`<rect x="${sx(on[0])}" y="${by}" width="${Math.max(0,sx(on[1])-sx(on[0]))}" height="11" rx="5.5" fill="var(--acc)" fill-opacity=".2"${st.representative?"":' stroke="var(--acc)" stroke-dasharray="4 3" stroke-opacity=".8"'}/>`;
+    if(rp)g+=`<rect x="${sx(rp[0])}" y="${by}" width="${Math.max(0,sx(rp[1])-sx(rp[0]))}" height="11" rx="5.5" fill="var(--acc)" fill-opacity=".75"/>`;
+    const past=continues(st)||(st.onset&&st.onset[1]>w)||(st.representative&&repEnd(st)>w);
+    if(past)g+=`<path d="M${CH.x1+3} ${by} l7 5.5 l-7 5.5 z" fill="var(--acc)"/>`;
+    if(!st.onset)g+=`<text x="${CH.x1}" y="${by+9}" text-anchor="end" style="font-style:italic">→ ${esc(x.u.atEnd)}</text>`;
+    g+=`</g>`});
+  g+=`<line id="cur2" x1="0" y1="${CH.gy0-4}" x2="0" y2="${gEnd}" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+  const svg=$("#chartSvg");svg.setAttribute("viewBox",`0 0 ${CH.W} ${CH.H}`);svg.innerHTML=s;svg.setAttribute("aria-label",x.chart.aria);
+  const gs=$("#ganttSvg");gs.setAttribute("viewBox",`0 0 ${CH.W} ${CH.GH}`);gs.innerHTML=g;gs.setAttribute("aria-label",x.chart.gantt);
 }
 function renderBarLegend(){const b=X().chart.bars;
   $("#barLegend").innerHTML=`<span><i aria-hidden="true"></i>${esc(b.rep)}</span><span><i class="soft" aria-hidden="true"></i>${esc(b.onset)}</span><span><i class="dash" aria-hidden="true"></i>${esc(b.unc)}</span><span><b aria-hidden="true" style="color:var(--acc)">▸</b>${esc(b.cont)}</span><span><i class="anc" aria-hidden="true"></i>${esc(b.anc)}</span>`}
-function renderLegend(){$("#legend").innerHTML=CURVE_KEYS.map(k=>`<button type="button" class="lg" data-k="${k}" aria-pressed="${!hidden.has(k)}"><span class="ln" style="background:var(--${k})"></span>${esc(X().cv[k])}<span class="lv" data-lv="${k}"></span></button>`).join("")}
+/* curve toggles: checkbox icon, line sample (colour + dash), name, current level */
+function renderLegend(){const x=X();$("#legend").innerHTML=CURVE_KEYS.map(k=>{const on=!hidden.has(k),d=CURVE_STYLE[k].dash;
+  return `<button type="button" class="cvt" data-k="${k}" aria-pressed="${on}"><span class="cb" aria-hidden="true">${on?"✓":""}</span> <svg class="smp" viewBox="0 0 30 10" aria-hidden="true"><line x1="1.5" y1="5" x2="28.5" y2="5" stroke="var(--${k})" stroke-width="3" stroke-linecap="round"${d?` stroke-dasharray="${d}"`:""}/></svg> <span class="nm">${esc(x.cv[k])}</span> <span class="lv" data-lv="${k}"></span></button>`}).join("")}
+function toggleCurve(b){const k=b.dataset.k;hidden.has(k)?hidden.delete(k):hidden.add(k);const on=!hidden.has(k);
+  b.setAttribute("aria-pressed",String(on));b.querySelector(".cb").textContent=on?"✓":"";
+  document.querySelectorAll(`#chartSvg [data-k="${k}"]`).forEach(el=>el.classList.toggle("off",!on))}
 
-function update(){const x=X(),cx=sx(t);
-  $("#hr").value=t;$("#hrOut").textContent=`t = ${t} ${x.u.h}`;
-  const c=$("#cur");if(c){c.setAttribute("x1",cx);c.setAttribute("x2",cx)}
+/* ---------- expand / fullscreen ---------- */
+const chartPanel=$("#chartPanel"),expandBtn=$("#expandBtn");
+const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
+function renderExpandBtn(){const x=X();expandBtn.setAttribute("aria-pressed",String(full));
+  expandBtn.querySelector(".ico").textContent=full?"⤡":"⤢";expandBtn.querySelector(".lbl").textContent=full?x.chart.shrink:x.chart.expand}
+/* state is always read back from the document (fullscreenchange), never assumed */
+function syncFull(){full=fsEl()===chartPanel||expanded;
+  chartPanel.classList.toggle("is-full",full);document.body.classList.toggle("chart-expanded",full);
+  renderExpandBtn();renderChart();update()}
+function setExpanded(v){expanded=v;syncFull()}
+function toggleFull(){
+  if(fsEl()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return}
+  if(expanded){setExpanded(false);return}
+  const req=chartPanel.requestFullscreen||chartPanel.webkitRequestFullscreen;
+  if(!req){setExpanded(true);return}   /* e.g. iPhone Safari: fall back to the expanded layout */
+  try{const p=req.call(chartPanel);if(p&&typeof p.catch==="function")p.catch(()=>setExpanded(true))}catch(e){setExpanded(true)}}
+["fullscreenchange","webkitfullscreenchange"].forEach(ev=>document.addEventListener(ev,syncFull));
+["fullscreenerror","webkitfullscreenerror"].forEach(ev=>document.addEventListener(ev,()=>setExpanded(true)));
+
+function update(){const x=X(),w=win();t=Math.min(t,w);const cx=sx(t);
+  const z=$("#zoom");z.value=zi;$("#zoomOut").textContent=`0–${fmtN(w)} ${x.u.h}`;
+  z.setAttribute("aria-valuetext",(w===1?x.chart.zoomAria.one:x.chart.zoomAria.many).replace("{b}",fmtN(w)));
+  const hr=$("#hr");hr.max=w;hr.step=tStep();hr.value=t;$("#hrOut").textContent=`t = ${fmtN(t)} ${x.u.h}`;
+  ["#cur","#cur2"].forEach(id=>{const c=$(id);if(c){c.setAttribute("x1",cx);c.setAttribute("x2",cx)}});
   document.querySelectorAll("#dots circle").forEach(d=>{const k=d.dataset.k;d.setAttribute("cx",cx);d.setAttribute("cy",sy(FN[k](t)))});
-  document.querySelectorAll("[data-lv]").forEach(e=>e.textContent="· "+level(FN[e.dataset.lv](t)));
+  document.querySelectorAll("[data-lv]").forEach(e=>e.textContent=level(FN[e.dataset.lv](t)));
   const f=focusIdx(t),a=[...activeSet(t)].filter(i=>i!==f);
   const btn=i=>`<button type="button" class="btn${i===f?" main":""}" data-open="${i}">${i+1}. ${esc(x.st[STATIONS[i].id].name)}</button>`;
   $("#focusBox").innerHTML=`<span class="lbl">${esc(x.chart.focus)}</span>${f>=0?btn(f):esc(x.chart.none)}<span class="lbl">${esc(x.chart.also)}</span>${a.length?a.map(btn).join(""):esc(x.chart.none)}`;
-  $("#hr").setAttribute("aria-valuetext",`${t} ${x.u.h} — ${f>=0?x.st[STATIONS[f].id].name:""}`);
+  $("#hr").setAttribute("aria-valuetext",`${fmtN(t)} ${x.u.h} —${f>=0?x.st[STATIONS[f].id].name:""}`);
   markActive();
 }
 
@@ -1150,7 +1243,7 @@ function renderAll(){const x=X();document.documentElement.lang=lang;document.tit
   document.querySelectorAll("[data-t]").forEach(e=>{const v=get(x,e.dataset.t);if(v!=null)e.textContent=v});
   document.querySelectorAll("[data-ta]").forEach(e=>{const v=get(x,e.dataset.ta);if(v!=null)e.setAttribute("aria-label",v)});
   menuBtn.setAttribute("aria-label",x.ui.menuOpen);
-  renderControls();buildMenu();applyCollapsed();renderStations();renderPanel();renderChart();renderBarLegend();renderLegend();renderSources();buildVideos();update();
+  renderControls();buildMenu();applyCollapsed();renderStations();renderPanel();renderExpandBtn();renderChart();renderBarLegend();renderLegend();renderSources();buildVideos();update();
 }
 
 /* ---------- events ---------- */
@@ -1163,8 +1256,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("button,g.grow");
   if(b.dataset.act==="close"){const i=cur;openStation(null);const s=document.querySelector(`.st[data-i="${i}"]`);if(s)s.focus();return}
   if(b.dataset.act==="prev"&&cur>0){openStation(cur-1,true);return}
   if(b.dataset.act==="next"&&cur<STATIONS.length-1){openStation(cur+1,true);return}
-  if(b.classList.contains("lg")){const k=b.dataset.k;hidden.has(k)?hidden.delete(k):hidden.add(k);
-    b.setAttribute("aria-pressed",String(!hidden.has(k)));document.querySelectorAll(`#chartSvg [data-k="${k}"]`).forEach(el=>el.classList.toggle("off",hidden.has(k)));return}
+  if(b.classList.contains("cvt")){toggleCurve(b);return}
+  if(b===expandBtn){toggleFull();return}
   if(b.classList.contains("menu-item")){goTo(b.dataset.key);return}
   if(b===menuBtn){openMenu();return}
   if(b===collapseBtn){collapsed=!collapsed;store.set("fasting.menuCollapsed",collapsed?"1":"0");applyCollapsed();return}
@@ -1173,13 +1266,20 @@ backdrop.addEventListener("click",closeMenu);
 $("#stations").addEventListener("keydown",e=>{const b=e.target.closest(".st");if(!b)return;const i=+b.dataset.i,n=STATIONS.length;let j=null;
   if(e.key==="ArrowRight"||e.key==="ArrowDown")j=(i+1)%n;else if(e.key==="ArrowLeft"||e.key==="ArrowUp")j=(i-1+n)%n;else if(e.key==="Home")j=0;else if(e.key==="End")j=n-1;
   if(j!=null){e.preventDefault();document.querySelector(`.st[data-i="${j}"]`).focus()}});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&menuEl.classList.contains("open")){closeMenu();return}if(e.key==="Escape"&&cur!=null){const i=cur;openStation(null);const s=document.querySelector(`.st[data-i="${i}"]`);if(s)s.focus()}});
-$("#hr").addEventListener("input",e=>{t=+e.target.value;update()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&expanded){setExpanded(false);expandBtn.focus();return}
+  if(e.key==="Escape"&&menuEl.classList.contains("open")){closeMenu();return}if(e.key==="Escape"&&cur!=null){const i=cur;openStation(null);const s=document.querySelector(`.st[data-i="${i}"]`);if(s)s.focus()}});
+$("#hr").addEventListener("input",e=>{t=snapT(+e.target.value);update()});
+$("#zoom").addEventListener("input",e=>{zi=+e.target.value;t=snapT(t);renderChart();update()});
 $("#chartSvg").addEventListener("pointerdown",e=>{const svg=$("#chartSvg"),r=svg.getBoundingClientRect(),vx=(e.clientX-r.left)*CH.W/r.width,vy=(e.clientY-r.top)*CH.H/r.height;
-  if(vx>=CH.x0&&vx<=CH.x1&&vy<CH.cy1+20){t=Math.round((vx-CH.x0)/(CH.x1-CH.x0)*META.tMax);update()}});
+  if(vx>=CH.x0&&vx<=CH.x1&&vy<CH.cy1+20){t=snapT((vx-CH.x0)/(CH.x1-CH.x0)*win());update()}});
+/* re-render at the new pixel width (and height, when expanded) */
+let lastW=0;
+new ResizeObserver(()=>{const w=Math.round($("#chartBox").clientWidth);if(w&&w!==lastW){lastW=w;renderChart();update()}}).observe($("#chartBox"));
+addEventListener("resize",()=>{if(full){renderChart();update()}});
 
 /* ---------- init ---------- */
 (function init(){const sl=store.get("fasting.lang"),sp=store.get("fasting.pal");
+  CURVE_KEYS.forEach(k=>document.documentElement.style.setProperty("--"+k,CURVE_STYLE[k].color));
   if(sl&&L[sl])lang=sl;if(sp&&META.pals.includes(sp))pal=sp;document.documentElement.dataset.pal=pal;renderAll()})();
 </script>
 </body>

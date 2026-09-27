@@ -12,7 +12,7 @@ if (!script) { console.error("FAIL: no inline <script> found in index.html"); pr
 const cut = script.indexOf("/* ================= app");
 if (cut < 0) { console.error("FAIL: app marker not found in script"); process.exit(1); }
 const D = new Function(script.slice(0, cut) +
-  ";return {VIDEOS,META,EVIDENCE,STATIONS,CURVES,CURVE_KEYS,DIAGRAMS,SOURCES,L};")();
+  ";return {VIDEOS,META,EVIDENCE,STATIONS,CURVES,CURVE_KEYS,CURVE_STYLE,ZOOM,DIAGRAMS,SOURCES,L};")();
 
 let failed = 0;
 const check = (name, errors) => {
@@ -95,6 +95,25 @@ const paths = (o, p = "", out = []) => {
     });
   }
   check(`curves (${D.CURVE_KEYS.length}): strictly increasing x in 0..${D.META.tMax}, values in 0..1`, errs);
+}
+
+/* 4b. zoom steps */
+{
+  const want = [1, 2, 4, 8, 12, 24, 36, 72], errs = [];
+  if (JSON.stringify(D.ZOOM) !== JSON.stringify(want)) errs.push(`ZOOM is ${JSON.stringify(D.ZOOM)}, expected ${JSON.stringify(want)}`);
+  check(`zoom: exactly 8 steps ${JSON.stringify(want)}`, errs);
+}
+
+/* 4c. curve styles: one per curve, 6 different colours, 6 different dash patterns */
+{
+  const errs = [], keys = Object.keys(D.CURVE_STYLE || {});
+  if (keys.length !== 6 || D.CURVE_KEYS.some(k => !keys.includes(k))) errs.push(`CURVE_STYLE keys [${keys}] must match CURVE_KEYS [${D.CURVE_KEYS}]`);
+  const colors = D.CURVE_KEYS.map(k => String(D.CURVE_STYLE[k]?.color).toLowerCase());
+  const dashes = D.CURVE_KEYS.map(k => String(D.CURVE_STYLE[k]?.dash).replace(/[\s,]+/g, " ").trim());
+  colors.forEach((c, i) => { if (!/^#[0-9a-f]{6}$/.test(c)) errs.push(`${D.CURVE_KEYS[i]}: colour "${c}" is not #rrggbb`); });
+  const dup = (arr, what) => arr.forEach((v, i) => { const j = arr.indexOf(v); if (j !== i) errs.push(`${what} "${v}" used by both ${D.CURVE_KEYS[j]} and ${D.CURVE_KEYS[i]}`); });
+  dup(colors, "colour"); dup(dashes, "dash pattern");
+  check(`curve styles: 6 different colours, 6 different dash patterns`, errs);
 }
 
 /* 5. video slots */
